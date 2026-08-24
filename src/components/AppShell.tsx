@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Users,
   Boxes,
+  SlidersHorizontal,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -31,9 +32,11 @@ const NAV = [
 
 
 export function AppShell({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
-  const { role, member, isStaff } = useCurrentRole();
+  const { role, member, isStaff, isAdmin } = useCurrentRole();
   const router = useRouter();
-  const items = NAV.filter((item) => !item.staffOnly || isStaff);
+  const items = NAV.filter(
+    (item) => (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin),
+  );
 
   async function signOut() {
     await supabase.auth.signOut();
