@@ -32,6 +32,7 @@ import { Route as AuthenticatedSollicitationsRouteImport } from './routes/_authe
 import { Route as AuthenticatedTableauDeBordRouteImport } from './routes/_authenticated/tableau-de-bord'
 import { Route as AuthenticatedTachesRouteImport } from './routes/_authenticated/taches'
 import { Route as AuthenticatedTrombinoscopeRouteImport } from './routes/_authenticated/trombinoscope'
+import { Route as AuthenticatedProgrammeIdRouteImport } from './routes/_authenticated/programme.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -155,6 +156,12 @@ const AuthenticatedTrombinoscopeRoute =
     path: '/trombinoscope',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedProgrammeIdRoute =
+  AuthenticatedProgrammeIdRouteImport.update({
+    id: '/programme/$id',
+    path: '/programme/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -179,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
   '/taches': typeof AuthenticatedTachesRoute
   '/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
+  '/programme/$id': typeof AuthenticatedProgrammeIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -203,6 +211,7 @@ export interface FileRoutesByTo {
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
   '/taches': typeof AuthenticatedTachesRoute
   '/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
+  '/programme/$id': typeof AuthenticatedProgrammeIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -229,6 +238,7 @@ export interface FileRoutesById {
   '/_authenticated/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
   '/_authenticated/taches': typeof AuthenticatedTachesRoute
   '/_authenticated/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
+  '/_authenticated/programme/$id': typeof AuthenticatedProgrammeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -255,6 +265,7 @@ export interface FileRouteTypes {
     | '/tableau-de-bord'
     | '/taches'
     | '/trombinoscope'
+    | '/programme/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -279,6 +290,7 @@ export interface FileRouteTypes {
     | '/tableau-de-bord'
     | '/taches'
     | '/trombinoscope'
+    | '/programme/$id'
   id:
     | '__root__'
     | '/'
@@ -304,6 +316,7 @@ export interface FileRouteTypes {
     | '/_authenticated/tableau-de-bord'
     | '/_authenticated/taches'
     | '/_authenticated/trombinoscope'
+    | '/_authenticated/programme/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -475,6 +488,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTrombinoscopeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/programme/$id': {
+      id: '/_authenticated/programme/$id'
+      path: '/programme/$id'
+      fullPath: '/programme/$id'
+      preLoaderRoute: typeof AuthenticatedProgrammeIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -499,6 +519,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTableauDeBordRoute: typeof AuthenticatedTableauDeBordRoute
   AuthenticatedTachesRoute: typeof AuthenticatedTachesRoute
   AuthenticatedTrombinoscopeRoute: typeof AuthenticatedTrombinoscopeRoute
+  AuthenticatedProgrammeIdRoute: typeof AuthenticatedProgrammeIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -522,6 +543,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTableauDeBordRoute: AuthenticatedTableauDeBordRoute,
   AuthenticatedTachesRoute: AuthenticatedTachesRoute,
   AuthenticatedTrombinoscopeRoute: AuthenticatedTrombinoscopeRoute,
+  AuthenticatedProgrammeIdRoute: AuthenticatedProgrammeIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
