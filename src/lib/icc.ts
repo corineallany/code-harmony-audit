@@ -114,7 +114,7 @@ export async function logAction(entry: {
   detail?: string;
   entity?: string;
   entityId?: string;
-  actorName?: string | null;
+  actorName?: string | null | undefined;
 }) {
   const id = `a${Date.now()}${Math.random().toString(36).slice(2, 7)}`;
   await supabase.from("audit_log").insert({
