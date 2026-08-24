@@ -166,3 +166,35 @@ export function formatDateTime(value: string | null | undefined) {
     minute: "2-digit",
   });
 }
+
+export type Task = Tables["tasks"]["Row"];
+
+export const availabilityQuery = queryOptions({
+  queryKey: ["member-availability"],
+  queryFn: async () =>
+    unwrap(
+      await supabase
+        .from("member_availability")
+        .select("id, member_id, starts_at, ends_at, note")
+        .order("starts_at"),
+    ),
+});
+
+export const tasksQuery = queryOptions({
+  queryKey: ["tasks"],
+  queryFn: async () =>
+    unwrap(await supabase.from("tasks").select("*").order("due_date", { ascending: true })),
+});
+
+export const TASK_STATUS_LABEL: Record<string, string> = {
+  todo: "À faire",
+  doing: "En cours",
+  done: "Terminée",
+};
+
+export const TASK_PRIORITY_LABEL: Record<string, string> = {
+  basse: "Basse",
+  normale: "Normale",
+  haute: "Haute",
+};
+
