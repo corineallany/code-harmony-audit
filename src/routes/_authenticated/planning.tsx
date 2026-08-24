@@ -3,10 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { AppShell, EmptyState } from "@/components/AppShell";
+import { ConflictsPanel } from "@/components/ConflictsPanel";
+import { useCurrentRole } from "@/hooks/useAuth";
 import { formatDate, polesQuery, programsQuery, solicitationsQuery, STATUS_LABEL } from "@/lib/icc";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+
 
 export const Route = createFileRoute("/_authenticated/planning")({
   head: () => ({
