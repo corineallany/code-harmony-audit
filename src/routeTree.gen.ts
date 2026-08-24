@@ -22,6 +22,7 @@ import { Route as AuthenticatedPolesRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedProgrammesRouteImport } from './routes/_authenticated/programmes'
 import { Route as AuthenticatedSollicitationsRouteImport } from './routes/_authenticated/sollicitations'
 import { Route as AuthenticatedTableauDeBordRouteImport } from './routes/_authenticated/tableau-de-bord'
+import { Route as AuthenticatedTachesRouteImport } from './routes/_authenticated/taches'
 import { Route as AuthenticatedTrombinoscopeRouteImport } from './routes/_authenticated/trombinoscope'
 
 const IndexRoute = IndexRouteImport.update({
@@ -91,6 +92,11 @@ const AuthenticatedTableauDeBordRoute =
     path: '/tableau-de-bord',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedTachesRoute = AuthenticatedTachesRouteImport.update({
+  id: '/taches',
+  path: '/taches',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedTrombinoscopeRoute =
   AuthenticatedTrombinoscopeRouteImport.update({
     id: '/trombinoscope',
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/programmes': typeof AuthenticatedProgrammesRoute
   '/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
+  '/taches': typeof AuthenticatedTachesRoute
   '/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
 }
 export interface FileRoutesByTo {
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/programmes': typeof AuthenticatedProgrammesRoute
   '/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
+  '/taches': typeof AuthenticatedTachesRoute
   '/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
 }
 export interface FileRoutesById {
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/_authenticated/programmes': typeof AuthenticatedProgrammesRoute
   '/_authenticated/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/_authenticated/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
+  '/_authenticated/taches': typeof AuthenticatedTachesRoute
   '/_authenticated/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
 }
 export interface FileRouteTypes {
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | '/programmes'
     | '/sollicitations'
     | '/tableau-de-bord'
+    | '/taches'
     | '/trombinoscope'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -175,6 +185,7 @@ export interface FileRouteTypes {
     | '/programmes'
     | '/sollicitations'
     | '/tableau-de-bord'
+    | '/taches'
     | '/trombinoscope'
   id:
     | '__root__'
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/_authenticated/programmes'
     | '/_authenticated/sollicitations'
     | '/_authenticated/tableau-de-bord'
+    | '/_authenticated/taches'
     | '/_authenticated/trombinoscope'
   fileRoutesById: FileRoutesById
 }
@@ -293,6 +305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTableauDeBordRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/taches': {
+      id: '/_authenticated/taches'
+      path: '/taches'
+      fullPath: '/taches'
+      preLoaderRoute: typeof AuthenticatedTachesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/trombinoscope': {
       id: '/_authenticated/trombinoscope'
       path: '/trombinoscope'
@@ -314,6 +333,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProgrammesRoute: typeof AuthenticatedProgrammesRoute
   AuthenticatedSollicitationsRoute: typeof AuthenticatedSollicitationsRoute
   AuthenticatedTableauDeBordRoute: typeof AuthenticatedTableauDeBordRoute
+  AuthenticatedTachesRoute: typeof AuthenticatedTachesRoute
   AuthenticatedTrombinoscopeRoute: typeof AuthenticatedTrombinoscopeRoute
 }
 
@@ -328,6 +348,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProgrammesRoute: AuthenticatedProgrammesRoute,
   AuthenticatedSollicitationsRoute: AuthenticatedSollicitationsRoute,
   AuthenticatedTableauDeBordRoute: AuthenticatedTableauDeBordRoute,
+  AuthenticatedTachesRoute: AuthenticatedTachesRoute,
   AuthenticatedTrombinoscopeRoute: AuthenticatedTrombinoscopeRoute,
 }
 

@@ -1,7 +1,10 @@
 import { Link, useRouter } from "@tanstack/react-router";
 import {
+  AlertTriangle,
   CalendarDays,
+  CheckSquare,
   ClipboardList,
+  Download,
   Inbox,
   LayoutDashboard,
   LogOut,
@@ -23,13 +26,17 @@ const NAV = [
   { to: "/tableau-de-bord", label: "Tableau de bord", icon: LayoutDashboard, adminOnly: false, staffOnly: false },
   { to: "/planning", label: "Planning", icon: CalendarDays, adminOnly: false, staffOnly: false },
   { to: "/programmes", label: "Programmes", icon: ClipboardList, adminOnly: false, staffOnly: false },
+  { to: "/taches", label: "Tâches", icon: CheckSquare, adminOnly: false, staffOnly: false },
   { to: "/sollicitations", label: "Sollicitations", icon: Inbox, adminOnly: false, staffOnly: false },
   { to: "/trombinoscope", label: "Trombinoscope", icon: Users, adminOnly: false, staffOnly: false },
   { to: "/poles", label: "Pôles", icon: Boxes, adminOnly: false, staffOnly: false },
+  { to: "/conflits", label: "Conflits", icon: AlertTriangle, adminOnly: false, staffOnly: true },
+  { to: "/exports", label: "Exports", icon: Download, adminOnly: false, staffOnly: true },
   { to: "/administration", label: "Administration", icon: SlidersHorizontal, adminOnly: true, staffOnly: true },
   { to: "/pilotage", label: "Pilotage", icon: ShieldCheck, adminOnly: false, staffOnly: true },
   { to: "/parametres", label: "Paramètres", icon: Settings, adminOnly: false, staffOnly: true },
 ] as const;
+
 
 
 export function AppShell({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
