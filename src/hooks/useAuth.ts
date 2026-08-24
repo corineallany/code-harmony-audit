@@ -10,9 +10,11 @@ export type AppRole = Database["public"]["Enums"]["app_role"];
 export const ROLE_LABEL: Record<AppRole, string> = {
   responsable: "Responsable",
   adjoint: "Adjoint",
+  admin_technique: "Administrateur technique",
   referent: "Référent",
   equipier: "Équipier",
 };
+
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
