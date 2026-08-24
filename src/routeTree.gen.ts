@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedAFaireRouteImport } from './routes/_authenticated/a-faire'
 import { Route as AuthenticatedAdministrationRouteImport } from './routes/_authenticated/administration'
 import { Route as AuthenticatedArchivesRouteImport } from './routes/_authenticated/archives'
 import { Route as AuthenticatedConflitsRouteImport } from './routes/_authenticated/conflits'
@@ -21,6 +22,7 @@ import { Route as AuthenticatedExportsRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedHistoriqueRouteImport } from './routes/_authenticated/historique'
 import { Route as AuthenticatedModelesRouteImport } from './routes/_authenticated/modeles'
 import { Route as AuthenticatedMonPlanningRouteImport } from './routes/_authenticated/mon-planning'
+import { Route as AuthenticatedMonProfilRouteImport } from './routes/_authenticated/mon-profil'
 import { Route as AuthenticatedParametresRouteImport } from './routes/_authenticated/parametres'
 import { Route as AuthenticatedPilotageRouteImport } from './routes/_authenticated/pilotage'
 import { Route as AuthenticatedPlanningRouteImport } from './routes/_authenticated/planning'
@@ -32,6 +34,7 @@ import { Route as AuthenticatedSollicitationsRouteImport } from './routes/_authe
 import { Route as AuthenticatedTableauDeBordRouteImport } from './routes/_authenticated/tableau-de-bord'
 import { Route as AuthenticatedTachesRouteImport } from './routes/_authenticated/taches'
 import { Route as AuthenticatedTrombinoscopeRouteImport } from './routes/_authenticated/trombinoscope'
+import { Route as AuthenticatedProgrammeIdRouteImport } from './routes/_authenticated/programme.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +49,11 @@ const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAFaireRoute = AuthenticatedAFaireRouteImport.update({
+  id: '/a-faire',
+  path: '/a-faire',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAdministrationRoute =
   AuthenticatedAdministrationRouteImport.update({
@@ -96,6 +104,11 @@ const AuthenticatedMonPlanningRoute =
     path: '/mon-planning',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMonProfilRoute = AuthenticatedMonProfilRouteImport.update({
+  id: '/mon-profil',
+  path: '/mon-profil',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedParametresRoute = AuthenticatedParametresRouteImport.update({
   id: '/parametres',
   path: '/parametres',
@@ -155,10 +168,17 @@ const AuthenticatedTrombinoscopeRoute =
     path: '/trombinoscope',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedProgrammeIdRoute =
+  AuthenticatedProgrammeIdRouteImport.update({
+    id: '/programme/$id',
+    path: '/programme/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/a-faire': typeof AuthenticatedAFaireRoute
   '/administration': typeof AuthenticatedAdministrationRoute
   '/archives': typeof AuthenticatedArchivesRoute
   '/conflits': typeof AuthenticatedConflitsRoute
@@ -168,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/historique': typeof AuthenticatedHistoriqueRoute
   '/modeles': typeof AuthenticatedModelesRoute
   '/mon-planning': typeof AuthenticatedMonPlanningRoute
+  '/mon-profil': typeof AuthenticatedMonProfilRoute
   '/parametres': typeof AuthenticatedParametresRoute
   '/pilotage': typeof AuthenticatedPilotageRoute
   '/planning': typeof AuthenticatedPlanningRoute
@@ -179,10 +200,12 @@ export interface FileRoutesByFullPath {
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
   '/taches': typeof AuthenticatedTachesRoute
   '/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
+  '/programme/$id': typeof AuthenticatedProgrammeIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/a-faire': typeof AuthenticatedAFaireRoute
   '/administration': typeof AuthenticatedAdministrationRoute
   '/archives': typeof AuthenticatedArchivesRoute
   '/conflits': typeof AuthenticatedConflitsRoute
@@ -192,6 +215,7 @@ export interface FileRoutesByTo {
   '/historique': typeof AuthenticatedHistoriqueRoute
   '/modeles': typeof AuthenticatedModelesRoute
   '/mon-planning': typeof AuthenticatedMonPlanningRoute
+  '/mon-profil': typeof AuthenticatedMonProfilRoute
   '/parametres': typeof AuthenticatedParametresRoute
   '/pilotage': typeof AuthenticatedPilotageRoute
   '/planning': typeof AuthenticatedPlanningRoute
@@ -203,12 +227,14 @@ export interface FileRoutesByTo {
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
   '/taches': typeof AuthenticatedTachesRoute
   '/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
+  '/programme/$id': typeof AuthenticatedProgrammeIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/a-faire': typeof AuthenticatedAFaireRoute
   '/_authenticated/administration': typeof AuthenticatedAdministrationRoute
   '/_authenticated/archives': typeof AuthenticatedArchivesRoute
   '/_authenticated/conflits': typeof AuthenticatedConflitsRoute
@@ -218,6 +244,7 @@ export interface FileRoutesById {
   '/_authenticated/historique': typeof AuthenticatedHistoriqueRoute
   '/_authenticated/modeles': typeof AuthenticatedModelesRoute
   '/_authenticated/mon-planning': typeof AuthenticatedMonPlanningRoute
+  '/_authenticated/mon-profil': typeof AuthenticatedMonProfilRoute
   '/_authenticated/parametres': typeof AuthenticatedParametresRoute
   '/_authenticated/pilotage': typeof AuthenticatedPilotageRoute
   '/_authenticated/planning': typeof AuthenticatedPlanningRoute
@@ -229,12 +256,14 @@ export interface FileRoutesById {
   '/_authenticated/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
   '/_authenticated/taches': typeof AuthenticatedTachesRoute
   '/_authenticated/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
+  '/_authenticated/programme/$id': typeof AuthenticatedProgrammeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
+    | '/a-faire'
     | '/administration'
     | '/archives'
     | '/conflits'
@@ -244,6 +273,7 @@ export interface FileRouteTypes {
     | '/historique'
     | '/modeles'
     | '/mon-planning'
+    | '/mon-profil'
     | '/parametres'
     | '/pilotage'
     | '/planning'
@@ -255,10 +285,12 @@ export interface FileRouteTypes {
     | '/tableau-de-bord'
     | '/taches'
     | '/trombinoscope'
+    | '/programme/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/a-faire'
     | '/administration'
     | '/archives'
     | '/conflits'
@@ -268,6 +300,7 @@ export interface FileRouteTypes {
     | '/historique'
     | '/modeles'
     | '/mon-planning'
+    | '/mon-profil'
     | '/parametres'
     | '/pilotage'
     | '/planning'
@@ -279,11 +312,13 @@ export interface FileRouteTypes {
     | '/tableau-de-bord'
     | '/taches'
     | '/trombinoscope'
+    | '/programme/$id'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/a-faire'
     | '/_authenticated/administration'
     | '/_authenticated/archives'
     | '/_authenticated/conflits'
@@ -293,6 +328,7 @@ export interface FileRouteTypes {
     | '/_authenticated/historique'
     | '/_authenticated/modeles'
     | '/_authenticated/mon-planning'
+    | '/_authenticated/mon-profil'
     | '/_authenticated/parametres'
     | '/_authenticated/pilotage'
     | '/_authenticated/planning'
@@ -304,6 +340,7 @@ export interface FileRouteTypes {
     | '/_authenticated/tableau-de-bord'
     | '/_authenticated/taches'
     | '/_authenticated/trombinoscope'
+    | '/_authenticated/programme/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -334,6 +371,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/a-faire': {
+      id: '/_authenticated/a-faire'
+      path: '/a-faire'
+      fullPath: '/a-faire'
+      preLoaderRoute: typeof AuthenticatedAFaireRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/administration': {
       id: '/_authenticated/administration'
@@ -396,6 +440,13 @@ declare module '@tanstack/react-router' {
       path: '/mon-planning'
       fullPath: '/mon-planning'
       preLoaderRoute: typeof AuthenticatedMonPlanningRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/mon-profil': {
+      id: '/_authenticated/mon-profil'
+      path: '/mon-profil'
+      fullPath: '/mon-profil'
+      preLoaderRoute: typeof AuthenticatedMonProfilRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/parametres': {
@@ -475,10 +526,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTrombinoscopeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/programme/$id': {
+      id: '/_authenticated/programme/$id'
+      path: '/programme/$id'
+      fullPath: '/programme/$id'
+      preLoaderRoute: typeof AuthenticatedProgrammeIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAFaireRoute: typeof AuthenticatedAFaireRoute
   AuthenticatedAdministrationRoute: typeof AuthenticatedAdministrationRoute
   AuthenticatedArchivesRoute: typeof AuthenticatedArchivesRoute
   AuthenticatedConflitsRoute: typeof AuthenticatedConflitsRoute
@@ -488,6 +547,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHistoriqueRoute: typeof AuthenticatedHistoriqueRoute
   AuthenticatedModelesRoute: typeof AuthenticatedModelesRoute
   AuthenticatedMonPlanningRoute: typeof AuthenticatedMonPlanningRoute
+  AuthenticatedMonProfilRoute: typeof AuthenticatedMonProfilRoute
   AuthenticatedParametresRoute: typeof AuthenticatedParametresRoute
   AuthenticatedPilotageRoute: typeof AuthenticatedPilotageRoute
   AuthenticatedPlanningRoute: typeof AuthenticatedPlanningRoute
@@ -499,9 +559,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTableauDeBordRoute: typeof AuthenticatedTableauDeBordRoute
   AuthenticatedTachesRoute: typeof AuthenticatedTachesRoute
   AuthenticatedTrombinoscopeRoute: typeof AuthenticatedTrombinoscopeRoute
+  AuthenticatedProgrammeIdRoute: typeof AuthenticatedProgrammeIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAFaireRoute: AuthenticatedAFaireRoute,
   AuthenticatedAdministrationRoute: AuthenticatedAdministrationRoute,
   AuthenticatedArchivesRoute: AuthenticatedArchivesRoute,
   AuthenticatedConflitsRoute: AuthenticatedConflitsRoute,
@@ -511,6 +573,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHistoriqueRoute: AuthenticatedHistoriqueRoute,
   AuthenticatedModelesRoute: AuthenticatedModelesRoute,
   AuthenticatedMonPlanningRoute: AuthenticatedMonPlanningRoute,
+  AuthenticatedMonProfilRoute: AuthenticatedMonProfilRoute,
   AuthenticatedParametresRoute: AuthenticatedParametresRoute,
   AuthenticatedPilotageRoute: AuthenticatedPilotageRoute,
   AuthenticatedPlanningRoute: AuthenticatedPlanningRoute,
@@ -522,6 +585,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTableauDeBordRoute: AuthenticatedTableauDeBordRoute,
   AuthenticatedTachesRoute: AuthenticatedTachesRoute,
   AuthenticatedTrombinoscopeRoute: AuthenticatedTrombinoscopeRoute,
+  AuthenticatedProgrammeIdRoute: AuthenticatedProgrammeIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
