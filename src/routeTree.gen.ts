@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedPlanningRouteImport } from './routes/_authenticated/planning'
+import { Route as AuthenticatedPolesRouteImport } from './routes/_authenticated/poles'
 import { Route as AuthenticatedProgrammesRouteImport } from './routes/_authenticated/programmes'
 import { Route as AuthenticatedSollicitationsRouteImport } from './routes/_authenticated/sollicitations'
 import { Route as AuthenticatedTableauDeBordRouteImport } from './routes/_authenticated/tableau-de-bord'
@@ -35,6 +36,11 @@ const AuthRoute = AuthRouteImport.update({
 const AuthenticatedPlanningRoute = AuthenticatedPlanningRouteImport.update({
   id: '/planning',
   path: '/planning',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPolesRoute = AuthenticatedPolesRouteImport.update({
+  id: '/poles',
+  path: '/poles',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedProgrammesRoute = AuthenticatedProgrammesRouteImport.update({
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/planning': typeof AuthenticatedPlanningRoute
+  '/poles': typeof AuthenticatedPolesRoute
   '/programmes': typeof AuthenticatedProgrammesRoute
   '/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/planning': typeof AuthenticatedPlanningRoute
+  '/poles': typeof AuthenticatedPolesRoute
   '/programmes': typeof AuthenticatedProgrammesRoute
   '/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/planning': typeof AuthenticatedPlanningRoute
+  '/_authenticated/poles': typeof AuthenticatedPolesRoute
   '/_authenticated/programmes': typeof AuthenticatedProgrammesRoute
   '/_authenticated/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/_authenticated/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/planning'
+    | '/poles'
     | '/programmes'
     | '/sollicitations'
     | '/tableau-de-bord'
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/planning'
+    | '/poles'
     | '/programmes'
     | '/sollicitations'
     | '/tableau-de-bord'
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/planning'
+    | '/_authenticated/poles'
     | '/_authenticated/programmes'
     | '/_authenticated/sollicitations'
     | '/_authenticated/tableau-de-bord'
@@ -157,6 +169,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPlanningRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/poles': {
+      id: '/_authenticated/poles'
+      path: '/poles'
+      fullPath: '/poles'
+      preLoaderRoute: typeof AuthenticatedPolesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/programmes': {
       id: '/_authenticated/programmes'
       path: '/programmes'
@@ -190,6 +209,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedPlanningRoute: typeof AuthenticatedPlanningRoute
+  AuthenticatedPolesRoute: typeof AuthenticatedPolesRoute
   AuthenticatedProgrammesRoute: typeof AuthenticatedProgrammesRoute
   AuthenticatedSollicitationsRoute: typeof AuthenticatedSollicitationsRoute
   AuthenticatedTableauDeBordRoute: typeof AuthenticatedTableauDeBordRoute
@@ -198,6 +218,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPlanningRoute: AuthenticatedPlanningRoute,
+  AuthenticatedPolesRoute: AuthenticatedPolesRoute,
   AuthenticatedProgrammesRoute: AuthenticatedProgrammesRoute,
   AuthenticatedSollicitationsRoute: AuthenticatedSollicitationsRoute,
   AuthenticatedTableauDeBordRoute: AuthenticatedTableauDeBordRoute,
