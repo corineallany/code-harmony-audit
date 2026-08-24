@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAdministrationRouteImport } from './routes/_authenticated/administration'
+import { Route as AuthenticatedConflitsRouteImport } from './routes/_authenticated/conflits'
+import { Route as AuthenticatedExportsRouteImport } from './routes/_authenticated/exports'
 import { Route as AuthenticatedParametresRouteImport } from './routes/_authenticated/parametres'
 import { Route as AuthenticatedPilotageRouteImport } from './routes/_authenticated/pilotage'
 import { Route as AuthenticatedPlanningRouteImport } from './routes/_authenticated/planning'
@@ -20,6 +22,7 @@ import { Route as AuthenticatedPolesRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedProgrammesRouteImport } from './routes/_authenticated/programmes'
 import { Route as AuthenticatedSollicitationsRouteImport } from './routes/_authenticated/sollicitations'
 import { Route as AuthenticatedTableauDeBordRouteImport } from './routes/_authenticated/tableau-de-bord'
+import { Route as AuthenticatedTachesRouteImport } from './routes/_authenticated/taches'
 import { Route as AuthenticatedTrombinoscopeRouteImport } from './routes/_authenticated/trombinoscope'
 
 const IndexRoute = IndexRouteImport.update({
@@ -42,6 +45,16 @@ const AuthenticatedAdministrationRoute =
     path: '/administration',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedConflitsRoute = AuthenticatedConflitsRouteImport.update({
+  id: '/conflits',
+  path: '/conflits',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedExportsRoute = AuthenticatedExportsRouteImport.update({
+  id: '/exports',
+  path: '/exports',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedParametresRoute = AuthenticatedParametresRouteImport.update({
   id: '/parametres',
   path: '/parametres',
@@ -79,6 +92,11 @@ const AuthenticatedTableauDeBordRoute =
     path: '/tableau-de-bord',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedTachesRoute = AuthenticatedTachesRouteImport.update({
+  id: '/taches',
+  path: '/taches',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedTrombinoscopeRoute =
   AuthenticatedTrombinoscopeRouteImport.update({
     id: '/trombinoscope',
@@ -90,6 +108,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/administration': typeof AuthenticatedAdministrationRoute
+  '/conflits': typeof AuthenticatedConflitsRoute
+  '/exports': typeof AuthenticatedExportsRoute
   '/parametres': typeof AuthenticatedParametresRoute
   '/pilotage': typeof AuthenticatedPilotageRoute
   '/planning': typeof AuthenticatedPlanningRoute
@@ -97,12 +117,15 @@ export interface FileRoutesByFullPath {
   '/programmes': typeof AuthenticatedProgrammesRoute
   '/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
+  '/taches': typeof AuthenticatedTachesRoute
   '/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/administration': typeof AuthenticatedAdministrationRoute
+  '/conflits': typeof AuthenticatedConflitsRoute
+  '/exports': typeof AuthenticatedExportsRoute
   '/parametres': typeof AuthenticatedParametresRoute
   '/pilotage': typeof AuthenticatedPilotageRoute
   '/planning': typeof AuthenticatedPlanningRoute
@@ -110,6 +133,7 @@ export interface FileRoutesByTo {
   '/programmes': typeof AuthenticatedProgrammesRoute
   '/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
+  '/taches': typeof AuthenticatedTachesRoute
   '/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
 }
 export interface FileRoutesById {
@@ -118,6 +142,8 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/administration': typeof AuthenticatedAdministrationRoute
+  '/_authenticated/conflits': typeof AuthenticatedConflitsRoute
+  '/_authenticated/exports': typeof AuthenticatedExportsRoute
   '/_authenticated/parametres': typeof AuthenticatedParametresRoute
   '/_authenticated/pilotage': typeof AuthenticatedPilotageRoute
   '/_authenticated/planning': typeof AuthenticatedPlanningRoute
@@ -125,6 +151,7 @@ export interface FileRoutesById {
   '/_authenticated/programmes': typeof AuthenticatedProgrammesRoute
   '/_authenticated/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/_authenticated/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
+  '/_authenticated/taches': typeof AuthenticatedTachesRoute
   '/_authenticated/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
 }
 export interface FileRouteTypes {
@@ -133,6 +160,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/administration'
+    | '/conflits'
+    | '/exports'
     | '/parametres'
     | '/pilotage'
     | '/planning'
@@ -140,12 +169,15 @@ export interface FileRouteTypes {
     | '/programmes'
     | '/sollicitations'
     | '/tableau-de-bord'
+    | '/taches'
     | '/trombinoscope'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/administration'
+    | '/conflits'
+    | '/exports'
     | '/parametres'
     | '/pilotage'
     | '/planning'
@@ -153,6 +185,7 @@ export interface FileRouteTypes {
     | '/programmes'
     | '/sollicitations'
     | '/tableau-de-bord'
+    | '/taches'
     | '/trombinoscope'
   id:
     | '__root__'
@@ -160,6 +193,8 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/administration'
+    | '/_authenticated/conflits'
+    | '/_authenticated/exports'
     | '/_authenticated/parametres'
     | '/_authenticated/pilotage'
     | '/_authenticated/planning'
@@ -167,6 +202,7 @@ export interface FileRouteTypes {
     | '/_authenticated/programmes'
     | '/_authenticated/sollicitations'
     | '/_authenticated/tableau-de-bord'
+    | '/_authenticated/taches'
     | '/_authenticated/trombinoscope'
   fileRoutesById: FileRoutesById
 }
@@ -204,6 +240,20 @@ declare module '@tanstack/react-router' {
       path: '/administration'
       fullPath: '/administration'
       preLoaderRoute: typeof AuthenticatedAdministrationRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/conflits': {
+      id: '/_authenticated/conflits'
+      path: '/conflits'
+      fullPath: '/conflits'
+      preLoaderRoute: typeof AuthenticatedConflitsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/exports': {
+      id: '/_authenticated/exports'
+      path: '/exports'
+      fullPath: '/exports'
+      preLoaderRoute: typeof AuthenticatedExportsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/parametres': {
@@ -255,6 +305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTableauDeBordRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/taches': {
+      id: '/_authenticated/taches'
+      path: '/taches'
+      fullPath: '/taches'
+      preLoaderRoute: typeof AuthenticatedTachesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/trombinoscope': {
       id: '/_authenticated/trombinoscope'
       path: '/trombinoscope'
@@ -267,6 +324,8 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdministrationRoute: typeof AuthenticatedAdministrationRoute
+  AuthenticatedConflitsRoute: typeof AuthenticatedConflitsRoute
+  AuthenticatedExportsRoute: typeof AuthenticatedExportsRoute
   AuthenticatedParametresRoute: typeof AuthenticatedParametresRoute
   AuthenticatedPilotageRoute: typeof AuthenticatedPilotageRoute
   AuthenticatedPlanningRoute: typeof AuthenticatedPlanningRoute
@@ -274,11 +333,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProgrammesRoute: typeof AuthenticatedProgrammesRoute
   AuthenticatedSollicitationsRoute: typeof AuthenticatedSollicitationsRoute
   AuthenticatedTableauDeBordRoute: typeof AuthenticatedTableauDeBordRoute
+  AuthenticatedTachesRoute: typeof AuthenticatedTachesRoute
   AuthenticatedTrombinoscopeRoute: typeof AuthenticatedTrombinoscopeRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdministrationRoute: AuthenticatedAdministrationRoute,
+  AuthenticatedConflitsRoute: AuthenticatedConflitsRoute,
+  AuthenticatedExportsRoute: AuthenticatedExportsRoute,
   AuthenticatedParametresRoute: AuthenticatedParametresRoute,
   AuthenticatedPilotageRoute: AuthenticatedPilotageRoute,
   AuthenticatedPlanningRoute: AuthenticatedPlanningRoute,
@@ -286,6 +348,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProgrammesRoute: AuthenticatedProgrammesRoute,
   AuthenticatedSollicitationsRoute: AuthenticatedSollicitationsRoute,
   AuthenticatedTableauDeBordRoute: AuthenticatedTableauDeBordRoute,
+  AuthenticatedTachesRoute: AuthenticatedTachesRoute,
   AuthenticatedTrombinoscopeRoute: AuthenticatedTrombinoscopeRoute,
 }
 

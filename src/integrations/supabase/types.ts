@@ -950,6 +950,73 @@ export type Database = {
           },
         ]
       }
+      tasks: {
+        Row: {
+          assignee_member_id: string | null
+          created_at: string
+          created_by: string | null
+          detail: string | null
+          due_date: string | null
+          id: string
+          pole_id: string | null
+          priority: string
+          program_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_member_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          detail?: string | null
+          due_date?: string | null
+          id?: string
+          pole_id?: string | null
+          priority?: string
+          program_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_member_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          detail?: string | null
+          due_date?: string | null
+          id?: string
+          pole_id?: string | null
+          priority?: string
+          program_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assignee_member_id_fkey"
+            columns: ["assignee_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_pole_id_fkey"
+            columns: ["pole_id"]
+            isOneToOne: false
+            referencedRelation: "poles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           active: boolean

@@ -3,10 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { AppShell, EmptyState } from "@/components/AppShell";
+import { ConflictsPanel } from "@/components/ConflictsPanel";
+import { useCurrentRole } from "@/hooks/useAuth";
 import { formatDate, polesQuery, programsQuery, solicitationsQuery, STATUS_LABEL } from "@/lib/icc";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+
 
 export const Route = createFileRoute("/_authenticated/planning")({
   head: () => ({
@@ -38,6 +41,8 @@ function Planning() {
   const programs = useQuery(programsQuery);
   const solicitations = useQuery(solicitationsQuery);
   const poles = useQuery(polesQuery);
+  const { isStaff } = useCurrentRole();
+
 
   const poleName = useMemo(
     () => new Map((poles.data ?? []).map((p) => [p.id, p.name])),
@@ -92,10 +97,16 @@ function Planning() {
 
   return (
     <AppShell title="Planning" subtitle="Programmes et sollicitations, source unique">
+      {isStaff ? (
+        <div className="mb-6">
+          <ConflictsPanel limit={4} />
+        </div>
+      ) : null}
       {months.length === 0 ? (
         <EmptyState title="Planning vide" description="Aucun programme ni sollicitation enregistré." />
       ) : (
         <div className="space-y-8">
+
           {months.map(([month, entries]) => (
             <section key={month}>
               <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-widest text-muted-foreground">
