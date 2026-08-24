@@ -81,10 +81,12 @@ export function usePush(userId: string | undefined) {
       // Store subscription server-side
       const keys = sub.toJSON().keys;
       await subscribePush({
-        endpoint: sub.endpoint,
-        p256dh: keys.p256dh,
-        auth: keys.auth,
-        userAgent: navigator.userAgent,
+        data: {
+          endpoint: sub.endpoint,
+          p256dh: keys["p256dh"],
+          auth: keys["auth"],
+          userAgent: navigator.userAgent,
+        },
       });
       setSubscribed(true);
     } catch (err) {
@@ -99,7 +101,7 @@ export function usePush(userId: string | undefined) {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
-        await unsubscribePush({ endpoint: sub.endpoint });
+        await unsubscribePush({ data: { endpoint: sub.endpoint } });
         await sub.unsubscribe();
       }
       setSubscribed(false);

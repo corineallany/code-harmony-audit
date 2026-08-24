@@ -54,11 +54,13 @@ function Parametres() {
     mutationFn: async () => {
       if (!userId) throw new Error("Non connecté");
       return sendNotification({
-        userIds: [userId],
-        type: "test",
-        title: "Notification de test",
-        body: "Les notifications push fonctionnent correctement.",
-        link: "/parametres",
+        data: {
+          userIds: [userId],
+          type: "test",
+          title: "Notification de test",
+          body: "Les notifications push fonctionnent correctement.",
+          link: "/parametres",
+        },
       });
     },
     onSuccess: () => {
