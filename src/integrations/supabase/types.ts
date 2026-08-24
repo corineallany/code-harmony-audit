@@ -185,6 +185,42 @@ export type Database = {
           },
         ]
       }
+      internal_notes: {
+        Row: {
+          author_id: string | null
+          author_name: string | null
+          body: string
+          created_at: string
+          entity: string
+          entity_id: string
+          id: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string | null
+          body: string
+          created_at?: string
+          entity: string
+          entity_id: string
+          id?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string | null
+          body?: string
+          created_at?: string
+          entity?: string
+          entity_id?: string
+          id?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: []
+      }
       legacy_state_archive: {
         Row: {
           captured_at: string
@@ -379,6 +415,36 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          in_app: boolean
+          push: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          in_app?: boolean
+          push?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          in_app?: boolean
+          push?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null
@@ -556,6 +622,73 @@ export type Database = {
           },
         ]
       }
+      program_attendance: {
+        Row: {
+          arrival_time: string | null
+          created_at: string
+          departure_time: string | null
+          id: string
+          is_reinforcement: boolean
+          member_id: string
+          note: string | null
+          presence: string
+          program_id: string
+          recorded_by: string | null
+          replaced_member_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          arrival_time?: string | null
+          created_at?: string
+          departure_time?: string | null
+          id?: string
+          is_reinforcement?: boolean
+          member_id: string
+          note?: string | null
+          presence?: string
+          program_id: string
+          recorded_by?: string | null
+          replaced_member_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          arrival_time?: string | null
+          created_at?: string
+          departure_time?: string | null
+          id?: string
+          is_reinforcement?: boolean
+          member_id?: string
+          note?: string | null
+          presence?: string
+          program_id?: string
+          recorded_by?: string | null
+          replaced_member_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_attendance_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_attendance_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_attendance_replaced_member_id_fkey"
+            columns: ["replaced_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       program_checklist_items: {
         Row: {
           created_at: string
@@ -596,40 +729,67 @@ export type Database = {
       }
       program_debriefs: {
         Row: {
+          actual_end: string | null
+          actual_start: string | null
           attendance_note: string | null
           author_member_id: string | null
+          completion: string
           created_at: string
           created_by: string | null
+          difficulties: string | null
           id: string
+          incident_detail: string | null
+          incident_type: string | null
+          needs: string | null
           program_id: string
           rating: number | null
+          status: string
           summary: string | null
+          to_direction: boolean
           to_improve: string | null
           updated_at: string
           went_well: string | null
         }
         Insert: {
+          actual_end?: string | null
+          actual_start?: string | null
           attendance_note?: string | null
           author_member_id?: string | null
+          completion?: string
           created_at?: string
           created_by?: string | null
+          difficulties?: string | null
           id?: string
+          incident_detail?: string | null
+          incident_type?: string | null
+          needs?: string | null
           program_id: string
           rating?: number | null
+          status?: string
           summary?: string | null
+          to_direction?: boolean
           to_improve?: string | null
           updated_at?: string
           went_well?: string | null
         }
         Update: {
+          actual_end?: string | null
+          actual_start?: string | null
           attendance_note?: string | null
           author_member_id?: string | null
+          completion?: string
           created_at?: string
           created_by?: string | null
+          difficulties?: string | null
           id?: string
+          incident_detail?: string | null
+          incident_type?: string | null
+          needs?: string | null
           program_id?: string
           rating?: number | null
+          status?: string
           summary?: string | null
+          to_direction?: boolean
           to_improve?: string | null
           updated_at?: string
           went_well?: string | null
@@ -644,6 +804,50 @@ export type Database = {
           },
           {
             foreignKeyName: "program_debriefs_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_documents: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          note: string | null
+          program_id: string
+          title: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          program_id: string
+          title: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          program_id?: string
+          title?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_documents_program_id_fkey"
             columns: ["program_id"]
             isOneToOne: false
             referencedRelation: "programs"
@@ -1164,6 +1368,30 @@ export type Database = {
           },
         ]
       }
+      user_hidden_items: {
+        Row: {
+          created_at: string
+          entity: string
+          entity_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity: string
+          entity_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity?: string
+          entity_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           active: boolean
@@ -1187,6 +1415,33 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_shortcuts: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          path: string
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          path: string
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          path?: string
+          sort_order?: number
           user_id?: string
         }
         Relationships: []
