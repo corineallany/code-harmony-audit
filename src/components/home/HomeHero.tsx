@@ -20,9 +20,11 @@ export function HomeHero() {
   const settings = useQuery(settingsQuery);
 
   const stored = Array.isArray(settings.data?.verses) ? (settings.data?.verses as Verse[]) : [];
-  const verses = [0, 1].map((i) => {
+  const verses: Verse[] = [0, 1].map((i) => {
     const v = stored[i];
-    return v?.ref || v?.text ? { ref: v.ref ?? "", text: v.text ?? "" } : DEFAULT_VERSES[i];
+    const fallback = DEFAULT_VERSES[i] as Verse;
+    if (!v || (!v.ref && !v.text)) return fallback;
+    return { ref: v.ref ?? fallback.ref, text: v.text ?? fallback.text };
   });
 
   return (
