@@ -95,7 +95,7 @@ function Pilotage() {
 
   const pendingAvailability = (availability.data ?? []).filter((a) => a.status === "pending").length;
   const pendingSolicitations = (solicitations.data ?? []).filter((s) => s.status === "pending").length;
-  const activeMembers = (members.data?.members ?? []).filter((m) => m.active !== false).length;
+  const activeMembers = (members.data?.members ?? []).filter((m) => m.status === "active").length;
 
   if (roleLoading || programs.isLoading) {
     return (
