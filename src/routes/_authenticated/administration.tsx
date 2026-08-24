@@ -29,7 +29,12 @@ function Administration() {
   const { isAdmin, loading } = useCurrentRole();
 
   if (loading) {
-    return <AppShell title="Administration" />;
+    return (
+      <AppShell title="Administration">
+        <p className="text-sm text-muted-foreground">Chargement…</p>
+      </AppShell>
+    );
+
   }
 
   if (!isAdmin) {
