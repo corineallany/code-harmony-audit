@@ -115,9 +115,17 @@ function Archives() {
 
   const restore = useMutation({
     mutationFn: async (entry: Entry) => {
-      const patch: Record<string, unknown> = { archived: false };
-      if (entry.table === "programs" || entry.table === "solicitations") patch['deleted'] = false;
-      const { error } = await supabase.from(entry.table).update(patch).eq("id", entry.id);
+      const { error } =
+        entry.table === "programs"
+          ? await supabase.from("programs").update({ archived: false, deleted: false }).eq("id", entry.id)
+          : entry.table === "solicitations"
+            ? await supabase
+                .from("solicitations")
+                .update({ archived: false, deleted: false })
+                .eq("id", entry.id)
+            : entry.table === "poles"
+              ? await supabase.from("poles").update({ archived: false }).eq("id", entry.id)
+              : await supabase.from("program_models").update({ archived: false }).eq("id", entry.id);
       if (error) throw new Error(error.message);
       await logAction({
         action: "element_restaure",
