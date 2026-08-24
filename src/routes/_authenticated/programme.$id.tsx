@@ -295,8 +295,8 @@ function ProgramSheet() {
               <CardContent className="space-y-2">
                 {conflicts.map((c, i) => (
                   <p key={i} className="text-sm">
-                    <Badge variant={c.level === "blocking" ? "destructive" : "secondary"} className="mr-2">
-                      {c.level === "blocking" ? "Bloquant" : "Alerte"}
+                    <Badge variant={c.severity === "high" ? "destructive" : "secondary"} className="mr-2">
+                      {c.severity === "high" ? "Bloquant" : "Alerte"}
                     </Badge>
                     {c.message}
                   </p>
