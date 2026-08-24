@@ -47,11 +47,11 @@ export function NotificationBell() {
         type="button"
         aria-label="Notifications"
         onClick={() => setOpen((o) => !o)}
-        className="relative flex size-10 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-accent"
+        className="relative flex size-10 items-center justify-center rounded-lg text-inherit transition-colors hover:bg-white/15"
       >
         <Bell className="size-5" />
         {unread > 0 && (
-          <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[0.6rem] font-bold text-primary-foreground">
+          <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-red-500 text-[0.6rem] font-bold text-white">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
