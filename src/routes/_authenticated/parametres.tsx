@@ -1,11 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { Bell, BellOff, Send } from "lucide-react";
 
 import { AppShell } from "@/components/AppShell";
 import { formatDateTime, settingsQuery } from "@/lib/icc";
 import { ROLE_LABEL, useCurrentRole } from "@/hooks/useAuth";
+import { usePush } from "@/hooks/usePush";
 import { supabase } from "@/integrations/supabase/client";
+import { sendNotification } from "@/lib/push.functions";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_authenticated/parametres")({
