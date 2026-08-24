@@ -52,10 +52,6 @@ const STATUS_TONE: Record<string, string> = {
   refused: "bg-rose-100 text-rose-900",
 };
 
-function toLocalInput(value: string) {
-  return new Date(value).toISOString().slice(0, 16);
-}
-
 function Disponibilites() {
   const availability = useQuery(availabilityQuery);
   const members = useQuery(membersQuery);
@@ -341,5 +337,3 @@ function Disponibilites() {
     </AppShell>
   );
 }
-
-export { toLocalInput };

@@ -41,7 +41,7 @@ export const Route = createFileRoute("/_authenticated/post-service")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: PostService;
+  component: PostService,
 });
 
 type Draft = {
