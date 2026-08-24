@@ -104,6 +104,87 @@ export type Database = {
         }
         Relationships: []
       }
+      evaluations: {
+        Row: {
+          anonymous: boolean
+          comment: string | null
+          created_at: string
+          evaluator_member_id: string | null
+          evaluator_user_id: string | null
+          id: string
+          improvements: string | null
+          initial_scores: Json
+          kind: string
+          period_label: string | null
+          revision_note: string | null
+          scores: Json
+          status: string
+          strengths: string | null
+          subject_member_id: string
+          submitted_at: string | null
+          updated_at: string
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          anonymous?: boolean
+          comment?: string | null
+          created_at?: string
+          evaluator_member_id?: string | null
+          evaluator_user_id?: string | null
+          id?: string
+          improvements?: string | null
+          initial_scores?: Json
+          kind?: string
+          period_label?: string | null
+          revision_note?: string | null
+          scores?: Json
+          status?: string
+          strengths?: string | null
+          subject_member_id: string
+          submitted_at?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          anonymous?: boolean
+          comment?: string | null
+          created_at?: string
+          evaluator_member_id?: string | null
+          evaluator_user_id?: string | null
+          id?: string
+          improvements?: string | null
+          initial_scores?: Json
+          kind?: string
+          period_label?: string | null
+          revision_note?: string | null
+          scores?: Json
+          status?: string
+          strengths?: string | null
+          subject_member_id?: string
+          submitted_at?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluations_evaluator_member_id_fkey"
+            columns: ["evaluator_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluations_subject_member_id_fkey"
+            columns: ["subject_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       legacy_state_archive: {
         Row: {
           captured_at: string
@@ -137,32 +218,41 @@ export type Database = {
       member_availability: {
         Row: {
           created_at: string
+          decided_at: string | null
+          decided_by: string | null
           ends_at: string
           id: string
           member_id: string
           note: string | null
           request_id: string | null
           starts_at: string
+          status: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
           ends_at: string
           id: string
           member_id: string
           note?: string | null
           request_id?: string | null
           starts_at: string
+          status?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
           ends_at?: string
           id?: string
           member_id?: string
           note?: string | null
           request_id?: string | null
           starts_at?: string
+          status?: string
           updated_at?: string
         }
         Relationships: [
@@ -497,6 +587,63 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "program_checklist_items_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_debriefs: {
+        Row: {
+          attendance_note: string | null
+          author_member_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          program_id: string
+          rating: number | null
+          summary: string | null
+          to_improve: string | null
+          updated_at: string
+          went_well: string | null
+        }
+        Insert: {
+          attendance_note?: string | null
+          author_member_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          program_id: string
+          rating?: number | null
+          summary?: string | null
+          to_improve?: string | null
+          updated_at?: string
+          went_well?: string | null
+        }
+        Update: {
+          attendance_note?: string | null
+          author_member_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          program_id?: string
+          rating?: number | null
+          summary?: string | null
+          to_improve?: string | null
+          updated_at?: string
+          went_well?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_debriefs_author_member_id_fkey"
+            columns: ["author_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_debriefs_program_id_fkey"
             columns: ["program_id"]
             isOneToOne: false
             referencedRelation: "programs"
