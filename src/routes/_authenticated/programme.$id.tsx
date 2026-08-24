@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { AppShell, EmptyState } from "@/components/AppShell";
 import { useCurrentRole } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { buildConflicts } from "@/lib/conflicts";
+import { detectConflicts } from "@/lib/conflicts";
 import {
   attendanceQuery,
   availabilityQuery,
@@ -82,11 +82,9 @@ function ProgramSheet() {
 
   const conflicts = useMemo(() => {
     if (!programs.data || !availability.data || !members.data) return [];
-    return buildConflicts({
-      programs: programs.data,
-      availability: availability.data,
-      members: members.data.members,
-    }).filter((c) => c.programId === id);
+    return detectConflicts(programs.data, members.data.members, availability.data).filter(
+      (c) => c.programId === id,
+    );
   }, [programs.data, availability.data, members.data, id]);
 
   const linkedSolicitations = (solicitations.data ?? []).filter((s) => s.program_id === id);
