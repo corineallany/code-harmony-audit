@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/conflits")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: Conflits;
+  component: Conflits,
 });
 
 function Conflits() {
