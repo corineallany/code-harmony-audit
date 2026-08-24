@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedAFaireRouteImport } from './routes/_authenticated/a-faire'
 import { Route as AuthenticatedAdministrationRouteImport } from './routes/_authenticated/administration'
 import { Route as AuthenticatedArchivesRouteImport } from './routes/_authenticated/archives'
 import { Route as AuthenticatedConflitsRouteImport } from './routes/_authenticated/conflits'
@@ -47,6 +48,11 @@ const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAFaireRoute = AuthenticatedAFaireRouteImport.update({
+  id: '/a-faire',
+  path: '/a-faire',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAdministrationRoute =
   AuthenticatedAdministrationRouteImport.update({
@@ -166,6 +172,7 @@ const AuthenticatedProgrammeIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/a-faire': typeof AuthenticatedAFaireRoute
   '/administration': typeof AuthenticatedAdministrationRoute
   '/archives': typeof AuthenticatedArchivesRoute
   '/conflits': typeof AuthenticatedConflitsRoute
@@ -191,6 +198,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/a-faire': typeof AuthenticatedAFaireRoute
   '/administration': typeof AuthenticatedAdministrationRoute
   '/archives': typeof AuthenticatedArchivesRoute
   '/conflits': typeof AuthenticatedConflitsRoute
@@ -218,6 +226,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/a-faire': typeof AuthenticatedAFaireRoute
   '/_authenticated/administration': typeof AuthenticatedAdministrationRoute
   '/_authenticated/archives': typeof AuthenticatedArchivesRoute
   '/_authenticated/conflits': typeof AuthenticatedConflitsRoute
@@ -245,6 +254,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/a-faire'
     | '/administration'
     | '/archives'
     | '/conflits'
@@ -270,6 +280,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/a-faire'
     | '/administration'
     | '/archives'
     | '/conflits'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/a-faire'
     | '/_authenticated/administration'
     | '/_authenticated/archives'
     | '/_authenticated/conflits'
@@ -347,6 +359,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/a-faire': {
+      id: '/_authenticated/a-faire'
+      path: '/a-faire'
+      fullPath: '/a-faire'
+      preLoaderRoute: typeof AuthenticatedAFaireRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/administration': {
       id: '/_authenticated/administration'
@@ -499,6 +518,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAFaireRoute: typeof AuthenticatedAFaireRoute
   AuthenticatedAdministrationRoute: typeof AuthenticatedAdministrationRoute
   AuthenticatedArchivesRoute: typeof AuthenticatedArchivesRoute
   AuthenticatedConflitsRoute: typeof AuthenticatedConflitsRoute
@@ -523,6 +543,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAFaireRoute: AuthenticatedAFaireRoute,
   AuthenticatedAdministrationRoute: AuthenticatedAdministrationRoute,
   AuthenticatedArchivesRoute: AuthenticatedArchivesRoute,
   AuthenticatedConflitsRoute: AuthenticatedConflitsRoute,
