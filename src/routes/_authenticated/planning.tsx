@@ -41,6 +41,8 @@ function Planning() {
   const programs = useQuery(programsQuery);
   const solicitations = useQuery(solicitationsQuery);
   const poles = useQuery(polesQuery);
+  const { isStaff } = useCurrentRole();
+
 
   const poleName = useMemo(
     () => new Map((poles.data ?? []).map((p) => [p.id, p.name])),
