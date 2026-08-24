@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAdministrationRouteImport } from './routes/_authenticated/administration'
+import { Route as AuthenticatedArchivesRouteImport } from './routes/_authenticated/archives'
 import { Route as AuthenticatedConflitsRouteImport } from './routes/_authenticated/conflits'
 import { Route as AuthenticatedDisponibilitesRouteImport } from './routes/_authenticated/disponibilites'
 import { Route as AuthenticatedEvaluationsRouteImport } from './routes/_authenticated/evaluations'
@@ -52,6 +53,11 @@ const AuthenticatedAdministrationRoute =
     path: '/administration',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedArchivesRoute = AuthenticatedArchivesRouteImport.update({
+  id: '/archives',
+  path: '/archives',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedConflitsRoute = AuthenticatedConflitsRouteImport.update({
   id: '/conflits',
   path: '/conflits',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/administration': typeof AuthenticatedAdministrationRoute
+  '/archives': typeof AuthenticatedArchivesRoute
   '/conflits': typeof AuthenticatedConflitsRoute
   '/disponibilites': typeof AuthenticatedDisponibilitesRoute
   '/evaluations': typeof AuthenticatedEvaluationsRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/administration': typeof AuthenticatedAdministrationRoute
+  '/archives': typeof AuthenticatedArchivesRoute
   '/conflits': typeof AuthenticatedConflitsRoute
   '/disponibilites': typeof AuthenticatedDisponibilitesRoute
   '/evaluations': typeof AuthenticatedEvaluationsRoute
@@ -202,6 +210,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/administration': typeof AuthenticatedAdministrationRoute
+  '/_authenticated/archives': typeof AuthenticatedArchivesRoute
   '/_authenticated/conflits': typeof AuthenticatedConflitsRoute
   '/_authenticated/disponibilites': typeof AuthenticatedDisponibilitesRoute
   '/_authenticated/evaluations': typeof AuthenticatedEvaluationsRoute
@@ -227,6 +236,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/administration'
+    | '/archives'
     | '/conflits'
     | '/disponibilites'
     | '/evaluations'
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/administration'
+    | '/archives'
     | '/conflits'
     | '/disponibilites'
     | '/evaluations'
@@ -274,6 +285,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/administration'
+    | '/_authenticated/archives'
     | '/_authenticated/conflits'
     | '/_authenticated/disponibilites'
     | '/_authenticated/evaluations'
@@ -328,6 +340,13 @@ declare module '@tanstack/react-router' {
       path: '/administration'
       fullPath: '/administration'
       preLoaderRoute: typeof AuthenticatedAdministrationRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/archives': {
+      id: '/_authenticated/archives'
+      path: '/archives'
+      fullPath: '/archives'
+      preLoaderRoute: typeof AuthenticatedArchivesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/conflits': {
@@ -461,6 +480,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdministrationRoute: typeof AuthenticatedAdministrationRoute
+  AuthenticatedArchivesRoute: typeof AuthenticatedArchivesRoute
   AuthenticatedConflitsRoute: typeof AuthenticatedConflitsRoute
   AuthenticatedDisponibilitesRoute: typeof AuthenticatedDisponibilitesRoute
   AuthenticatedEvaluationsRoute: typeof AuthenticatedEvaluationsRoute
@@ -483,6 +503,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdministrationRoute: AuthenticatedAdministrationRoute,
+  AuthenticatedArchivesRoute: AuthenticatedArchivesRoute,
   AuthenticatedConflitsRoute: AuthenticatedConflitsRoute,
   AuthenticatedDisponibilitesRoute: AuthenticatedDisponibilitesRoute,
   AuthenticatedEvaluationsRoute: AuthenticatedEvaluationsRoute,
