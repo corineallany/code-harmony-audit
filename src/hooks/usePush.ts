@@ -2,13 +2,13 @@ import { useEffect, useState, useCallback } from "react";
 
 import { getVapidPublicKey, subscribePush, unsubscribePush } from "@/lib/push.functions";
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = atob(base64);
   const out = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; i++) out[i] = rawData.charCodeAt(i);
-  return out;
+  return out.buffer.slice(0, out.byteLength) as ArrayBuffer;
 }
 
 export type PushState = "unsupported" | "loading" | "default" | "granted" | "denied";
@@ -79,7 +79,9 @@ export function usePush(userId: string | undefined) {
       });
 
       // Store subscription server-side
-      const keys = sub.toJSON().keys;
+      const json = sub.toJSON();
+      const keys = json.keys;
+      if (!keys) throw new Error("Missing push subscription keys");
       await subscribePush({
         data: {
           endpoint: sub.endpoint,

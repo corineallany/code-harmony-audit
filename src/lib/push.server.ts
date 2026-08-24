@@ -19,7 +19,7 @@ function b64urlToBytes(b64url: string): Uint8Array {
 function bytesToB64url(bytes: Uint8Array | ArrayBuffer): string {
   const arr = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes;
   let bin = "";
-  for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
+  for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]!);
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
