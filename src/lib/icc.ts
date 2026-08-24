@@ -227,3 +227,120 @@ export const AVAILABILITY_STATUS_LABEL: Record<string, string> = {
   validated: "Validée",
   refused: "Refusée",
 };
+
+/* ------------------------------------------------------------------ */
+/* THE Consolidation : fiche programme complète, post-service réel,    */
+/* préférences, raccourcis et vue personnelle.                          */
+/* ------------------------------------------------------------------ */
+
+export type Attendance = Tables["program_attendance"]["Row"];
+export type ProgramDocument = Tables["program_documents"]["Row"];
+export type InternalNote = Tables["internal_notes"]["Row"];
+export type NotificationPreference = Tables["notification_preferences"]["Row"];
+
+export const PRESENCE_LABEL: Record<string, string> = {
+  present: "Présent",
+  absent: "Absent",
+  retard: "Retard",
+  partiel: "Présence partielle",
+  remplace: "Remplacé",
+  renfort: "Renfort",
+};
+
+export const COMPLETION_LABEL: Record<string, string> = {
+  total: "Réalisé totalement",
+  partiel: "Réalisé partiellement",
+  non: "Non réalisé",
+};
+
+export const INCIDENT_TYPES = [
+  "Technique",
+  "Organisation",
+  "Matériel",
+  "Retard-absence",
+  "Communication",
+  "Autre",
+] as const;
+
+/** Types d'événements notifiables (préférences personnelles §5). */
+export const NOTIFICATION_EVENTS: Array<{ key: string; label: string }> = [
+  { key: "programme_affectation", label: "Je suis affecté à un programme" },
+  { key: "programme_rappel", label: "Rappel avant un service" },
+  { key: "programme_modification", label: "Un programme qui me concerne change" },
+  { key: "reponse_recue", label: "Une réponse est reçue sur mon programme" },
+  { key: "sollicitation", label: "Nouvelle sollicitation ponctuelle" },
+  { key: "indisponibilite", label: "Indisponibilité à valider / décidée" },
+  { key: "evaluation", label: "Évaluation à rédiger, à valider ou validée" },
+  { key: "post_service", label: "Post-service à compléter" },
+  { key: "tache", label: "Tâche qui m'est assignée" },
+];
+
+export const attendanceQuery = queryOptions({
+  queryKey: ["program-attendance"],
+  queryFn: async () => unwrap(await supabase.from("program_attendance").select("*")),
+});
+
+export const programDocumentsQuery = queryOptions({
+  queryKey: ["program-documents"],
+  queryFn: async () =>
+    unwrap(await supabase.from("program_documents").select("*").order("created_at")),
+});
+
+export const internalNotesQuery = queryOptions({
+  queryKey: ["internal-notes"],
+  queryFn: async () =>
+    unwrap(await supabase.from("internal_notes").select("*").order("created_at", { ascending: false })),
+});
+
+export function notificationPreferencesQuery(userId: string | undefined) {
+  return queryOptions({
+    queryKey: ["notification-preferences", userId],
+    enabled: !!userId,
+    queryFn: async () =>
+      unwrap(await supabase.from("notification_preferences").select("*").eq("user_id", userId!)),
+  });
+}
+
+export function shortcutsQuery(userId: string | undefined) {
+  return queryOptions({
+    queryKey: ["user-shortcuts", userId],
+    enabled: !!userId,
+    queryFn: async () =>
+      unwrap(
+        await supabase.from("user_shortcuts").select("*").eq("user_id", userId!).order("sort_order"),
+      ),
+  });
+}
+
+export function hiddenItemsQuery(userId: string | undefined) {
+  return queryOptions({
+    queryKey: ["user-hidden-items", userId],
+    enabled: !!userId,
+    queryFn: async () =>
+      unwrap(await supabase.from("user_hidden_items").select("*").eq("user_id", userId!)),
+  });
+}
+
+/** Un programme est terminé (donc post-service attendu) quand sa fin est passée. */
+export function isProgramFinished(p: { start_date: string | null; end_date: string | null; end_time: string | null }) {
+  const day = p.end_date ?? p.start_date;
+  if (!day) return false;
+  const end = new Date(`${day}T${p.end_time && /^\d{2}:\d{2}/.test(p.end_time) ? p.end_time : "23:59"}:00`);
+  return end.getTime() < Date.now();
+}
+
+/** Timeline d'un objet métier, reconstituée depuis le journal unique. */
+export function timelineQuery(entity: string, entityId: string) {
+  return queryOptions({
+    queryKey: ["timeline", entity, entityId],
+    queryFn: async () =>
+      unwrap(
+        await supabase
+          .from("audit_log")
+          .select("*")
+          .eq("entity", entity)
+          .eq("entity_id", entityId)
+          .order("occurred_at", { ascending: false }),
+      ),
+  });
+}
