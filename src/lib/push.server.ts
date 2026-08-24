@@ -8,11 +8,17 @@ const TE = new TextEncoder();
 
 function b64urlToBytes(b64url: string): Uint8Array {
   const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = b64 + "===".slice(0, (4 - (b64.length % 4)) % 4);
+  const padLen = (4 - (b64.length % 4)) % 4;
+  const padded = b64 + "=".repeat(padLen);
   const binary = atob(padded);
   const out = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
   return out;
+}
+
+/** Ensure a Uint8Array is backed by a plain ArrayBuffer (TS 5.7+ BufferSource fix). */
+function buf(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
 function bytesToB64url(bytes: Uint8Array | ArrayBuffer): string {
@@ -164,9 +170,9 @@ async function encryptPayload(
   plaintext[payloadBytes.length] = 2;
 
   // 7. Encrypt with AES-128-GCM (Web Crypto returns ciphertext || auth_tag)
-  const cekKey = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
+  const cekKey = await crypto.subtle.importKey("raw", buf(cek), "AES-GCM", false, ["encrypt"]);
   const encrypted = new Uint8Array(
-    await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, cekKey, plaintext),
+    await crypto.subtle.encrypt({ name: "AES-GCM", iv: buf(nonce) }, cekKey, buf(plaintext)),
   );
 
   // 8. Construct record: salt(16) || rs(4=4096) || idlen(1=65) || keyid(65) || encrypted
