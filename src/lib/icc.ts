@@ -10,6 +10,7 @@ export type Program = Tables["programs"]["Row"];
 export type Solicitation = Tables["solicitations"]["Row"];
 export type AuditEntry = Tables["audit_log"]["Row"];
 export type AppSettings = Tables["app_settings"]["Row"];
+export type Notification = Tables["notifications"]["Row"];
 export type ResponseStatus = Database["public"]["Enums"]["response_status"];
 
 function unwrap<T>(res: { data: T | null; error: { message: string } | null }): T {

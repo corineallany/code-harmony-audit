@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ROLE_LABEL, useCurrentRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const NAV = [
   { to: "/tableau-de-bord", label: "Tableau de bord", icon: LayoutDashboard, adminOnly: false, staffOnly: false },
@@ -74,14 +75,17 @@ export function AppShell({ title, subtitle, children }: { title: string; subtitl
 
       <div className="flex min-h-screen flex-1 flex-col">
         <header className="sticky top-0 z-20 border-b border-border bg-background/85 px-4 py-4 backdrop-blur lg:px-8">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center justify-between gap-3">
             <div>
               <h1 className="font-display text-xl font-semibold lg:text-2xl">{title}</h1>
               {subtitle ? <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p> : null}
             </div>
-            <Button variant="outline" size="sm" className="lg:hidden" onClick={signOut}>
-              <LogOut className="size-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <NotificationBell />
+              <Button variant="outline" size="sm" className="lg:hidden" onClick={signOut}>
+                <LogOut className="size-4" />
+              </Button>
+            </div>
           </div>
         </header>
 
