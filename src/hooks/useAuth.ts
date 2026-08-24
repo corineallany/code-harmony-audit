@@ -72,6 +72,7 @@ export function useCurrentRole() {
 
   return {
     loading: loading || query.isLoading,
+    userId: user?.id,
     role,
     roles,
     isTechAdmin,
