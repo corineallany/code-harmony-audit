@@ -10,33 +10,157 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedParametresRouteImport } from './routes/_authenticated/parametres'
+import { Route as AuthenticatedPilotageRouteImport } from './routes/_authenticated/pilotage'
+import { Route as AuthenticatedPlanningRouteImport } from './routes/_authenticated/planning'
+import { Route as AuthenticatedPolesRouteImport } from './routes/_authenticated/poles'
+import { Route as AuthenticatedProgrammesRouteImport } from './routes/_authenticated/programmes'
+import { Route as AuthenticatedSollicitationsRouteImport } from './routes/_authenticated/sollicitations'
+import { Route as AuthenticatedTableauDeBordRouteImport } from './routes/_authenticated/tableau-de-bord'
+import { Route as AuthenticatedTrombinoscopeRouteImport } from './routes/_authenticated/trombinoscope'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedParametresRoute = AuthenticatedParametresRouteImport.update({
+  id: '/parametres',
+  path: '/parametres',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPilotageRoute = AuthenticatedPilotageRouteImport.update({
+  id: '/pilotage',
+  path: '/pilotage',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPlanningRoute = AuthenticatedPlanningRouteImport.update({
+  id: '/planning',
+  path: '/planning',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPolesRoute = AuthenticatedPolesRouteImport.update({
+  id: '/poles',
+  path: '/poles',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedProgrammesRoute = AuthenticatedProgrammesRouteImport.update({
+  id: '/programmes',
+  path: '/programmes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSollicitationsRoute =
+  AuthenticatedSollicitationsRouteImport.update({
+    id: '/sollicitations',
+    path: '/sollicitations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedTableauDeBordRoute =
+  AuthenticatedTableauDeBordRouteImport.update({
+    id: '/tableau-de-bord',
+    path: '/tableau-de-bord',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedTrombinoscopeRoute =
+  AuthenticatedTrombinoscopeRouteImport.update({
+    id: '/trombinoscope',
+    path: '/trombinoscope',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/parametres': typeof AuthenticatedParametresRoute
+  '/pilotage': typeof AuthenticatedPilotageRoute
+  '/planning': typeof AuthenticatedPlanningRoute
+  '/poles': typeof AuthenticatedPolesRoute
+  '/programmes': typeof AuthenticatedProgrammesRoute
+  '/sollicitations': typeof AuthenticatedSollicitationsRoute
+  '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
+  '/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/parametres': typeof AuthenticatedParametresRoute
+  '/pilotage': typeof AuthenticatedPilotageRoute
+  '/planning': typeof AuthenticatedPlanningRoute
+  '/poles': typeof AuthenticatedPolesRoute
+  '/programmes': typeof AuthenticatedProgrammesRoute
+  '/sollicitations': typeof AuthenticatedSollicitationsRoute
+  '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
+  '/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/parametres': typeof AuthenticatedParametresRoute
+  '/_authenticated/pilotage': typeof AuthenticatedPilotageRoute
+  '/_authenticated/planning': typeof AuthenticatedPlanningRoute
+  '/_authenticated/poles': typeof AuthenticatedPolesRoute
+  '/_authenticated/programmes': typeof AuthenticatedProgrammesRoute
+  '/_authenticated/sollicitations': typeof AuthenticatedSollicitationsRoute
+  '/_authenticated/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
+  '/_authenticated/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/parametres'
+    | '/pilotage'
+    | '/planning'
+    | '/poles'
+    | '/programmes'
+    | '/sollicitations'
+    | '/tableau-de-bord'
+    | '/trombinoscope'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/parametres'
+    | '/pilotage'
+    | '/planning'
+    | '/poles'
+    | '/programmes'
+    | '/sollicitations'
+    | '/tableau-de-bord'
+    | '/trombinoscope'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/parametres'
+    | '/_authenticated/pilotage'
+    | '/_authenticated/planning'
+    | '/_authenticated/poles'
+    | '/_authenticated/programmes'
+    | '/_authenticated/sollicitations'
+    | '/_authenticated/tableau-de-bord'
+    | '/_authenticated/trombinoscope'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +172,108 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/parametres': {
+      id: '/_authenticated/parametres'
+      path: '/parametres'
+      fullPath: '/parametres'
+      preLoaderRoute: typeof AuthenticatedParametresRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/pilotage': {
+      id: '/_authenticated/pilotage'
+      path: '/pilotage'
+      fullPath: '/pilotage'
+      preLoaderRoute: typeof AuthenticatedPilotageRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/planning': {
+      id: '/_authenticated/planning'
+      path: '/planning'
+      fullPath: '/planning'
+      preLoaderRoute: typeof AuthenticatedPlanningRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/poles': {
+      id: '/_authenticated/poles'
+      path: '/poles'
+      fullPath: '/poles'
+      preLoaderRoute: typeof AuthenticatedPolesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/programmes': {
+      id: '/_authenticated/programmes'
+      path: '/programmes'
+      fullPath: '/programmes'
+      preLoaderRoute: typeof AuthenticatedProgrammesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/sollicitations': {
+      id: '/_authenticated/sollicitations'
+      path: '/sollicitations'
+      fullPath: '/sollicitations'
+      preLoaderRoute: typeof AuthenticatedSollicitationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/tableau-de-bord': {
+      id: '/_authenticated/tableau-de-bord'
+      path: '/tableau-de-bord'
+      fullPath: '/tableau-de-bord'
+      preLoaderRoute: typeof AuthenticatedTableauDeBordRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/trombinoscope': {
+      id: '/_authenticated/trombinoscope'
+      path: '/trombinoscope'
+      fullPath: '/trombinoscope'
+      preLoaderRoute: typeof AuthenticatedTrombinoscopeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedParametresRoute: typeof AuthenticatedParametresRoute
+  AuthenticatedPilotageRoute: typeof AuthenticatedPilotageRoute
+  AuthenticatedPlanningRoute: typeof AuthenticatedPlanningRoute
+  AuthenticatedPolesRoute: typeof AuthenticatedPolesRoute
+  AuthenticatedProgrammesRoute: typeof AuthenticatedProgrammesRoute
+  AuthenticatedSollicitationsRoute: typeof AuthenticatedSollicitationsRoute
+  AuthenticatedTableauDeBordRoute: typeof AuthenticatedTableauDeBordRoute
+  AuthenticatedTrombinoscopeRoute: typeof AuthenticatedTrombinoscopeRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedParametresRoute: AuthenticatedParametresRoute,
+  AuthenticatedPilotageRoute: AuthenticatedPilotageRoute,
+  AuthenticatedPlanningRoute: AuthenticatedPlanningRoute,
+  AuthenticatedPolesRoute: AuthenticatedPolesRoute,
+  AuthenticatedProgrammesRoute: AuthenticatedProgrammesRoute,
+  AuthenticatedSollicitationsRoute: AuthenticatedSollicitationsRoute,
+  AuthenticatedTableauDeBordRoute: AuthenticatedTableauDeBordRoute,
+  AuthenticatedTrombinoscopeRoute: AuthenticatedTrombinoscopeRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
