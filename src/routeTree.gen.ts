@@ -16,6 +16,7 @@ import { Route as AuthenticatedPlanningRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProgrammesRouteImport } from './routes/_authenticated/programmes'
 import { Route as AuthenticatedSollicitationsRouteImport } from './routes/_authenticated/sollicitations'
 import { Route as AuthenticatedTableauDeBordRouteImport } from './routes/_authenticated/tableau-de-bord'
+import { Route as AuthenticatedTrombinoscopeRouteImport } from './routes/_authenticated/trombinoscope'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -53,6 +54,12 @@ const AuthenticatedTableauDeBordRoute =
     path: '/tableau-de-bord',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedTrombinoscopeRoute =
+  AuthenticatedTrombinoscopeRouteImport.update({
+    id: '/trombinoscope',
+    path: '/trombinoscope',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/programmes': typeof AuthenticatedProgrammesRoute
   '/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
+  '/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -69,6 +77,7 @@ export interface FileRoutesByTo {
   '/programmes': typeof AuthenticatedProgrammesRoute
   '/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
+  '/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -79,6 +88,7 @@ export interface FileRoutesById {
   '/_authenticated/programmes': typeof AuthenticatedProgrammesRoute
   '/_authenticated/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/_authenticated/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
+  '/_authenticated/trombinoscope': typeof AuthenticatedTrombinoscopeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/programmes'
     | '/sollicitations'
     | '/tableau-de-bord'
+    | '/trombinoscope'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/programmes'
     | '/sollicitations'
     | '/tableau-de-bord'
+    | '/trombinoscope'
   id:
     | '__root__'
     | '/'
@@ -106,6 +118,7 @@ export interface FileRouteTypes {
     | '/_authenticated/programmes'
     | '/_authenticated/sollicitations'
     | '/_authenticated/tableau-de-bord'
+    | '/_authenticated/trombinoscope'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -165,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTableauDeBordRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/trombinoscope': {
+      id: '/_authenticated/trombinoscope'
+      path: '/trombinoscope'
+      fullPath: '/trombinoscope'
+      preLoaderRoute: typeof AuthenticatedTrombinoscopeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -173,6 +193,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProgrammesRoute: typeof AuthenticatedProgrammesRoute
   AuthenticatedSollicitationsRoute: typeof AuthenticatedSollicitationsRoute
   AuthenticatedTableauDeBordRoute: typeof AuthenticatedTableauDeBordRoute
+  AuthenticatedTrombinoscopeRoute: typeof AuthenticatedTrombinoscopeRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -180,6 +201,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProgrammesRoute: AuthenticatedProgrammesRoute,
   AuthenticatedSollicitationsRoute: AuthenticatedSollicitationsRoute,
   AuthenticatedTableauDeBordRoute: AuthenticatedTableauDeBordRoute,
+  AuthenticatedTrombinoscopeRoute: AuthenticatedTrombinoscopeRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
