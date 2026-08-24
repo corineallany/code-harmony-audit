@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAdministrationRouteImport } from './routes/_authenticated/administration'
 import { Route as AuthenticatedConflitsRouteImport } from './routes/_authenticated/conflits'
 import { Route as AuthenticatedDisponibilitesRouteImport } from './routes/_authenticated/disponibilites'
+import { Route as AuthenticatedEvaluationsRouteImport } from './routes/_authenticated/evaluations'
 import { Route as AuthenticatedExportsRouteImport } from './routes/_authenticated/exports'
 import { Route as AuthenticatedModelesRouteImport } from './routes/_authenticated/modeles'
 import { Route as AuthenticatedMonPlanningRouteImport } from './routes/_authenticated/mon-planning'
@@ -57,6 +58,12 @@ const AuthenticatedDisponibilitesRoute =
   AuthenticatedDisponibilitesRouteImport.update({
     id: '/disponibilites',
     path: '/disponibilites',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedEvaluationsRoute =
+  AuthenticatedEvaluationsRouteImport.update({
+    id: '/evaluations',
+    path: '/evaluations',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedExportsRoute = AuthenticatedExportsRouteImport.update({
@@ -130,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/administration': typeof AuthenticatedAdministrationRoute
   '/conflits': typeof AuthenticatedConflitsRoute
   '/disponibilites': typeof AuthenticatedDisponibilitesRoute
+  '/evaluations': typeof AuthenticatedEvaluationsRoute
   '/exports': typeof AuthenticatedExportsRoute
   '/modeles': typeof AuthenticatedModelesRoute
   '/mon-planning': typeof AuthenticatedMonPlanningRoute
@@ -149,6 +157,7 @@ export interface FileRoutesByTo {
   '/administration': typeof AuthenticatedAdministrationRoute
   '/conflits': typeof AuthenticatedConflitsRoute
   '/disponibilites': typeof AuthenticatedDisponibilitesRoute
+  '/evaluations': typeof AuthenticatedEvaluationsRoute
   '/exports': typeof AuthenticatedExportsRoute
   '/modeles': typeof AuthenticatedModelesRoute
   '/mon-planning': typeof AuthenticatedMonPlanningRoute
@@ -170,6 +179,7 @@ export interface FileRoutesById {
   '/_authenticated/administration': typeof AuthenticatedAdministrationRoute
   '/_authenticated/conflits': typeof AuthenticatedConflitsRoute
   '/_authenticated/disponibilites': typeof AuthenticatedDisponibilitesRoute
+  '/_authenticated/evaluations': typeof AuthenticatedEvaluationsRoute
   '/_authenticated/exports': typeof AuthenticatedExportsRoute
   '/_authenticated/modeles': typeof AuthenticatedModelesRoute
   '/_authenticated/mon-planning': typeof AuthenticatedMonPlanningRoute
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/administration'
     | '/conflits'
     | '/disponibilites'
+    | '/evaluations'
     | '/exports'
     | '/modeles'
     | '/mon-planning'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '/administration'
     | '/conflits'
     | '/disponibilites'
+    | '/evaluations'
     | '/exports'
     | '/modeles'
     | '/mon-planning'
@@ -230,6 +242,7 @@ export interface FileRouteTypes {
     | '/_authenticated/administration'
     | '/_authenticated/conflits'
     | '/_authenticated/disponibilites'
+    | '/_authenticated/evaluations'
     | '/_authenticated/exports'
     | '/_authenticated/modeles'
     | '/_authenticated/mon-planning'
@@ -292,6 +305,13 @@ declare module '@tanstack/react-router' {
       path: '/disponibilites'
       fullPath: '/disponibilites'
       preLoaderRoute: typeof AuthenticatedDisponibilitesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/evaluations': {
+      id: '/_authenticated/evaluations'
+      path: '/evaluations'
+      fullPath: '/evaluations'
+      preLoaderRoute: typeof AuthenticatedEvaluationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/exports': {
@@ -385,6 +405,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdministrationRoute: typeof AuthenticatedAdministrationRoute
   AuthenticatedConflitsRoute: typeof AuthenticatedConflitsRoute
   AuthenticatedDisponibilitesRoute: typeof AuthenticatedDisponibilitesRoute
+  AuthenticatedEvaluationsRoute: typeof AuthenticatedEvaluationsRoute
   AuthenticatedExportsRoute: typeof AuthenticatedExportsRoute
   AuthenticatedModelesRoute: typeof AuthenticatedModelesRoute
   AuthenticatedMonPlanningRoute: typeof AuthenticatedMonPlanningRoute
@@ -403,6 +424,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdministrationRoute: AuthenticatedAdministrationRoute,
   AuthenticatedConflitsRoute: AuthenticatedConflitsRoute,
   AuthenticatedDisponibilitesRoute: AuthenticatedDisponibilitesRoute,
+  AuthenticatedEvaluationsRoute: AuthenticatedEvaluationsRoute,
   AuthenticatedExportsRoute: AuthenticatedExportsRoute,
   AuthenticatedModelesRoute: AuthenticatedModelesRoute,
   AuthenticatedMonPlanningRoute: AuthenticatedMonPlanningRoute,
