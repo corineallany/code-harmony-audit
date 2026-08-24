@@ -14,7 +14,9 @@ export function IccHeader() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
-  const brand = settings.data?.brand ?? "LE MANS";
+  const rawBrand = (settings.data?.brand ?? "").trim();
+  // La pastille jaune porte déjà « ICC » : la seconde ligne reste « LE MANS ».
+  const brand = rawBrand && rawBrand.toUpperCase() !== "ICC" ? rawBrand : "LE MANS";
   const subtitle = settings.data?.subtitle ?? "Communication • Organisation • Service";
   const icon = settings.data?.icon_url ?? null;
   const initials = (member?.full_name ?? "?")
