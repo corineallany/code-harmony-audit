@@ -32,7 +32,9 @@ export const Route = createFileRoute("/_authenticated/parametres")({
 
 function Parametres() {
   const settings = useQuery(settingsQuery);
-  const { role, member } = useCurrentRole();
+  const { role, member, userId } = useCurrentRole();
+  const push = usePush(userId);
+  const [testSent, setTestSent] = useState(false);
 
   const permissions = useQuery({
     queryKey: ["role-permissions-all"],
@@ -47,6 +49,23 @@ function Parametres() {
   for (const p of permissions.data ?? []) {
     byRole.set(p.role, [...(byRole.get(p.role) ?? []), p.permission]);
   }
+
+  const testPushMut = useMutation({
+    mutationFn: async () => {
+      if (!userId) throw new Error("Non connecté");
+      return sendNotification({
+        userIds: [userId],
+        type: "test",
+        title: "Notification de test",
+        body: "Les notifications push fonctionnent correctement.",
+        link: "/parametres",
+      });
+    },
+    onSuccess: () => {
+      setTestSent(true);
+      setTimeout(() => setTestSent(false), 5000);
+    },
+  });
 
   return (
     <AppShell title="Paramètres" subtitle="Rôles, permissions et référence technique">
