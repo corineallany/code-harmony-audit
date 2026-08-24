@@ -158,6 +158,12 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-icc-violet: var(--icc-violet);
+  --color-icc-violet-hover: var(--icc-violet-hover);
+  --color-icc-yellow: var(--icc-yellow);
+  --color-icc-yellow-hover: var(--icc-yellow-hover);
+  --color-icc-blue: var(--icc-blue);
+  --color-icc-green: var(--icc-green);
   --font-display: var(--font-display);
   --font-sans: var(--font-body);
 }
@@ -179,7 +185,29 @@
   h3,
   h4 {
     font-family: var(--font-display);
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
   }
 }
+
+/* Dégradé du bloc d'accueil, identique à l'application d'origine */
+@utility icc-hero {
+  background: linear-gradient(135deg, #4c1d95, #1e40af);
+}
+
+/* Carte de menu de l'accueil */
+@utility icc-menu-card {
+  min-height: 138px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  text-align: left;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+
+  &:hover {
+    box-shadow: 0 10px 24px rgb(15 23 42 / 10%);
+    transform: translateY(-2px);
+  }
+}
+
 
