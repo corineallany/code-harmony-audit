@@ -92,10 +92,16 @@ function Planning() {
 
   return (
     <AppShell title="Planning" subtitle="Programmes et sollicitations, source unique">
+      {isStaff ? (
+        <div className="mb-6">
+          <ConflictsPanel limit={4} />
+        </div>
+      ) : null}
       {months.length === 0 ? (
         <EmptyState title="Planning vide" description="Aucun programme ni sollicitation enregistré." />
       ) : (
         <div className="space-y-8">
+
           {months.map(([month, entries]) => (
             <section key={month}>
               <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-widest text-muted-foreground">
