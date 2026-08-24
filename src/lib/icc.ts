@@ -175,7 +175,7 @@ export const availabilityQuery = queryOptions({
     unwrap(
       await supabase
         .from("member_availability")
-        .select("id, member_id, starts_at, ends_at, note")
+        .select("id, member_id, starts_at, ends_at, note, status, decided_at")
         .order("starts_at"),
     ),
 });
@@ -198,3 +198,32 @@ export const TASK_PRIORITY_LABEL: Record<string, string> = {
   haute: "Haute",
 };
 
+
+export type ProgramModel = Tables["program_models"]["Row"];
+export type ProgramDebrief = Tables["program_debriefs"]["Row"];
+export type EvaluationRow = Tables["evaluations"]["Row"];
+
+export const programModelsQuery = queryOptions({
+  queryKey: ["program-models"],
+  queryFn: async () => unwrap(await supabase.from("program_models").select("*").order("name")),
+});
+
+export const debriefsQuery = queryOptions({
+  queryKey: ["program-debriefs"],
+  queryFn: async () =>
+    unwrap(
+      await supabase.from("program_debriefs").select("*").order("created_at", { ascending: false }),
+    ),
+});
+
+export const evaluationsQuery = queryOptions({
+  queryKey: ["evaluations"],
+  queryFn: async () =>
+    unwrap(await supabase.from("evaluations").select("*").order("created_at", { ascending: false })),
+});
+
+export const AVAILABILITY_STATUS_LABEL: Record<string, string> = {
+  pending: "En attente de validation",
+  validated: "Validée",
+  refused: "Refusée",
+};

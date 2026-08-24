@@ -56,12 +56,58 @@ const ITEMS: Item[] = [
     to: "/taches",
   },
   {
+    icon: "🧩",
+    title: "Modèles de programme",
+    desc: "Modèles réutilisables avec pôles et checklist.",
+    to: "/modeles",
+    staffOnly: true,
+  },
+  {
+    icon: "🚫",
+    title: "Indisponibilités",
+    desc: "Déclarer et faire valider ses indisponibilités.",
+    to: "/disponibilites",
+  },
+  {
+    icon: "📝",
+    title: "Post-service",
+    desc: "Compte rendu après chaque programme réalisé.",
+    to: "/post-service",
+  },
+  {
+    icon: "⭐",
+    title: "Évaluations",
+    desc: "Évaluations opérationnelles, référents et leadership.",
+    to: "/evaluations",
+  },
+  {
+    icon: "🔎",
+    title: "Recherche",
+    desc: "Recherche universelle dans toutes les données.",
+    to: "/recherche",
+  },
+  {
+    icon: "🕰️",
+    title: "Historique",
+    desc: "Journal des actions et traçabilité.",
+    to: "/historique",
+    staffOnly: true,
+  },
+  {
+    icon: "🗄️",
+    title: "Archives & corbeille",
+    desc: "Éléments archivés, restauration et suppression.",
+    to: "/archives",
+    staffOnly: true,
+  },
+  {
     icon: "📤",
     title: "Exports",
     desc: "Exports Excel des membres, programmes et sollicitations.",
     to: "/exports",
     staffOnly: true,
   },
+
   {
     icon: "＋",
     title: "Nouveau programme",

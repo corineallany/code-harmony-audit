@@ -13,14 +13,21 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAdministrationRouteImport } from './routes/_authenticated/administration'
+import { Route as AuthenticatedArchivesRouteImport } from './routes/_authenticated/archives'
 import { Route as AuthenticatedConflitsRouteImport } from './routes/_authenticated/conflits'
+import { Route as AuthenticatedDisponibilitesRouteImport } from './routes/_authenticated/disponibilites'
+import { Route as AuthenticatedEvaluationsRouteImport } from './routes/_authenticated/evaluations'
 import { Route as AuthenticatedExportsRouteImport } from './routes/_authenticated/exports'
+import { Route as AuthenticatedHistoriqueRouteImport } from './routes/_authenticated/historique'
+import { Route as AuthenticatedModelesRouteImport } from './routes/_authenticated/modeles'
 import { Route as AuthenticatedMonPlanningRouteImport } from './routes/_authenticated/mon-planning'
 import { Route as AuthenticatedParametresRouteImport } from './routes/_authenticated/parametres'
 import { Route as AuthenticatedPilotageRouteImport } from './routes/_authenticated/pilotage'
 import { Route as AuthenticatedPlanningRouteImport } from './routes/_authenticated/planning'
 import { Route as AuthenticatedPolesRouteImport } from './routes/_authenticated/poles'
+import { Route as AuthenticatedPostServiceRouteImport } from './routes/_authenticated/post-service'
 import { Route as AuthenticatedProgrammesRouteImport } from './routes/_authenticated/programmes'
+import { Route as AuthenticatedRechercheRouteImport } from './routes/_authenticated/recherche'
 import { Route as AuthenticatedSollicitationsRouteImport } from './routes/_authenticated/sollicitations'
 import { Route as AuthenticatedTableauDeBordRouteImport } from './routes/_authenticated/tableau-de-bord'
 import { Route as AuthenticatedTachesRouteImport } from './routes/_authenticated/taches'
@@ -46,14 +53,41 @@ const AuthenticatedAdministrationRoute =
     path: '/administration',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedArchivesRoute = AuthenticatedArchivesRouteImport.update({
+  id: '/archives',
+  path: '/archives',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedConflitsRoute = AuthenticatedConflitsRouteImport.update({
   id: '/conflits',
   path: '/conflits',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDisponibilitesRoute =
+  AuthenticatedDisponibilitesRouteImport.update({
+    id: '/disponibilites',
+    path: '/disponibilites',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedEvaluationsRoute =
+  AuthenticatedEvaluationsRouteImport.update({
+    id: '/evaluations',
+    path: '/evaluations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedExportsRoute = AuthenticatedExportsRouteImport.update({
   id: '/exports',
   path: '/exports',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHistoriqueRoute = AuthenticatedHistoriqueRouteImport.update({
+  id: '/historique',
+  path: '/historique',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedModelesRoute = AuthenticatedModelesRouteImport.update({
+  id: '/modeles',
+  path: '/modeles',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMonPlanningRoute =
@@ -82,9 +116,20 @@ const AuthenticatedPolesRoute = AuthenticatedPolesRouteImport.update({
   path: '/poles',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPostServiceRoute =
+  AuthenticatedPostServiceRouteImport.update({
+    id: '/post-service',
+    path: '/post-service',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProgrammesRoute = AuthenticatedProgrammesRouteImport.update({
   id: '/programmes',
   path: '/programmes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRechercheRoute = AuthenticatedRechercheRouteImport.update({
+  id: '/recherche',
+  path: '/recherche',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSollicitationsRoute =
@@ -115,14 +160,21 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/administration': typeof AuthenticatedAdministrationRoute
+  '/archives': typeof AuthenticatedArchivesRoute
   '/conflits': typeof AuthenticatedConflitsRoute
+  '/disponibilites': typeof AuthenticatedDisponibilitesRoute
+  '/evaluations': typeof AuthenticatedEvaluationsRoute
   '/exports': typeof AuthenticatedExportsRoute
+  '/historique': typeof AuthenticatedHistoriqueRoute
+  '/modeles': typeof AuthenticatedModelesRoute
   '/mon-planning': typeof AuthenticatedMonPlanningRoute
   '/parametres': typeof AuthenticatedParametresRoute
   '/pilotage': typeof AuthenticatedPilotageRoute
   '/planning': typeof AuthenticatedPlanningRoute
   '/poles': typeof AuthenticatedPolesRoute
+  '/post-service': typeof AuthenticatedPostServiceRoute
   '/programmes': typeof AuthenticatedProgrammesRoute
+  '/recherche': typeof AuthenticatedRechercheRoute
   '/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
   '/taches': typeof AuthenticatedTachesRoute
@@ -132,14 +184,21 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/administration': typeof AuthenticatedAdministrationRoute
+  '/archives': typeof AuthenticatedArchivesRoute
   '/conflits': typeof AuthenticatedConflitsRoute
+  '/disponibilites': typeof AuthenticatedDisponibilitesRoute
+  '/evaluations': typeof AuthenticatedEvaluationsRoute
   '/exports': typeof AuthenticatedExportsRoute
+  '/historique': typeof AuthenticatedHistoriqueRoute
+  '/modeles': typeof AuthenticatedModelesRoute
   '/mon-planning': typeof AuthenticatedMonPlanningRoute
   '/parametres': typeof AuthenticatedParametresRoute
   '/pilotage': typeof AuthenticatedPilotageRoute
   '/planning': typeof AuthenticatedPlanningRoute
   '/poles': typeof AuthenticatedPolesRoute
+  '/post-service': typeof AuthenticatedPostServiceRoute
   '/programmes': typeof AuthenticatedProgrammesRoute
+  '/recherche': typeof AuthenticatedRechercheRoute
   '/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
   '/taches': typeof AuthenticatedTachesRoute
@@ -151,14 +210,21 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/administration': typeof AuthenticatedAdministrationRoute
+  '/_authenticated/archives': typeof AuthenticatedArchivesRoute
   '/_authenticated/conflits': typeof AuthenticatedConflitsRoute
+  '/_authenticated/disponibilites': typeof AuthenticatedDisponibilitesRoute
+  '/_authenticated/evaluations': typeof AuthenticatedEvaluationsRoute
   '/_authenticated/exports': typeof AuthenticatedExportsRoute
+  '/_authenticated/historique': typeof AuthenticatedHistoriqueRoute
+  '/_authenticated/modeles': typeof AuthenticatedModelesRoute
   '/_authenticated/mon-planning': typeof AuthenticatedMonPlanningRoute
   '/_authenticated/parametres': typeof AuthenticatedParametresRoute
   '/_authenticated/pilotage': typeof AuthenticatedPilotageRoute
   '/_authenticated/planning': typeof AuthenticatedPlanningRoute
   '/_authenticated/poles': typeof AuthenticatedPolesRoute
+  '/_authenticated/post-service': typeof AuthenticatedPostServiceRoute
   '/_authenticated/programmes': typeof AuthenticatedProgrammesRoute
+  '/_authenticated/recherche': typeof AuthenticatedRechercheRoute
   '/_authenticated/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/_authenticated/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
   '/_authenticated/taches': typeof AuthenticatedTachesRoute
@@ -170,14 +236,21 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/administration'
+    | '/archives'
     | '/conflits'
+    | '/disponibilites'
+    | '/evaluations'
     | '/exports'
+    | '/historique'
+    | '/modeles'
     | '/mon-planning'
     | '/parametres'
     | '/pilotage'
     | '/planning'
     | '/poles'
+    | '/post-service'
     | '/programmes'
+    | '/recherche'
     | '/sollicitations'
     | '/tableau-de-bord'
     | '/taches'
@@ -187,14 +260,21 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/administration'
+    | '/archives'
     | '/conflits'
+    | '/disponibilites'
+    | '/evaluations'
     | '/exports'
+    | '/historique'
+    | '/modeles'
     | '/mon-planning'
     | '/parametres'
     | '/pilotage'
     | '/planning'
     | '/poles'
+    | '/post-service'
     | '/programmes'
+    | '/recherche'
     | '/sollicitations'
     | '/tableau-de-bord'
     | '/taches'
@@ -205,14 +285,21 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/administration'
+    | '/_authenticated/archives'
     | '/_authenticated/conflits'
+    | '/_authenticated/disponibilites'
+    | '/_authenticated/evaluations'
     | '/_authenticated/exports'
+    | '/_authenticated/historique'
+    | '/_authenticated/modeles'
     | '/_authenticated/mon-planning'
     | '/_authenticated/parametres'
     | '/_authenticated/pilotage'
     | '/_authenticated/planning'
     | '/_authenticated/poles'
+    | '/_authenticated/post-service'
     | '/_authenticated/programmes'
+    | '/_authenticated/recherche'
     | '/_authenticated/sollicitations'
     | '/_authenticated/tableau-de-bord'
     | '/_authenticated/taches'
@@ -255,6 +342,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdministrationRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/archives': {
+      id: '/_authenticated/archives'
+      path: '/archives'
+      fullPath: '/archives'
+      preLoaderRoute: typeof AuthenticatedArchivesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/conflits': {
       id: '/_authenticated/conflits'
       path: '/conflits'
@@ -262,11 +356,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedConflitsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/disponibilites': {
+      id: '/_authenticated/disponibilites'
+      path: '/disponibilites'
+      fullPath: '/disponibilites'
+      preLoaderRoute: typeof AuthenticatedDisponibilitesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/evaluations': {
+      id: '/_authenticated/evaluations'
+      path: '/evaluations'
+      fullPath: '/evaluations'
+      preLoaderRoute: typeof AuthenticatedEvaluationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/exports': {
       id: '/_authenticated/exports'
       path: '/exports'
       fullPath: '/exports'
       preLoaderRoute: typeof AuthenticatedExportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/historique': {
+      id: '/_authenticated/historique'
+      path: '/historique'
+      fullPath: '/historique'
+      preLoaderRoute: typeof AuthenticatedHistoriqueRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/modeles': {
+      id: '/_authenticated/modeles'
+      path: '/modeles'
+      fullPath: '/modeles'
+      preLoaderRoute: typeof AuthenticatedModelesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/mon-planning': {
@@ -304,11 +426,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPolesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/post-service': {
+      id: '/_authenticated/post-service'
+      path: '/post-service'
+      fullPath: '/post-service'
+      preLoaderRoute: typeof AuthenticatedPostServiceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/programmes': {
       id: '/_authenticated/programmes'
       path: '/programmes'
       fullPath: '/programmes'
       preLoaderRoute: typeof AuthenticatedProgrammesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/recherche': {
+      id: '/_authenticated/recherche'
+      path: '/recherche'
+      fullPath: '/recherche'
+      preLoaderRoute: typeof AuthenticatedRechercheRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/sollicitations': {
@@ -344,14 +480,21 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdministrationRoute: typeof AuthenticatedAdministrationRoute
+  AuthenticatedArchivesRoute: typeof AuthenticatedArchivesRoute
   AuthenticatedConflitsRoute: typeof AuthenticatedConflitsRoute
+  AuthenticatedDisponibilitesRoute: typeof AuthenticatedDisponibilitesRoute
+  AuthenticatedEvaluationsRoute: typeof AuthenticatedEvaluationsRoute
   AuthenticatedExportsRoute: typeof AuthenticatedExportsRoute
+  AuthenticatedHistoriqueRoute: typeof AuthenticatedHistoriqueRoute
+  AuthenticatedModelesRoute: typeof AuthenticatedModelesRoute
   AuthenticatedMonPlanningRoute: typeof AuthenticatedMonPlanningRoute
   AuthenticatedParametresRoute: typeof AuthenticatedParametresRoute
   AuthenticatedPilotageRoute: typeof AuthenticatedPilotageRoute
   AuthenticatedPlanningRoute: typeof AuthenticatedPlanningRoute
   AuthenticatedPolesRoute: typeof AuthenticatedPolesRoute
+  AuthenticatedPostServiceRoute: typeof AuthenticatedPostServiceRoute
   AuthenticatedProgrammesRoute: typeof AuthenticatedProgrammesRoute
+  AuthenticatedRechercheRoute: typeof AuthenticatedRechercheRoute
   AuthenticatedSollicitationsRoute: typeof AuthenticatedSollicitationsRoute
   AuthenticatedTableauDeBordRoute: typeof AuthenticatedTableauDeBordRoute
   AuthenticatedTachesRoute: typeof AuthenticatedTachesRoute
@@ -360,14 +503,21 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdministrationRoute: AuthenticatedAdministrationRoute,
+  AuthenticatedArchivesRoute: AuthenticatedArchivesRoute,
   AuthenticatedConflitsRoute: AuthenticatedConflitsRoute,
+  AuthenticatedDisponibilitesRoute: AuthenticatedDisponibilitesRoute,
+  AuthenticatedEvaluationsRoute: AuthenticatedEvaluationsRoute,
   AuthenticatedExportsRoute: AuthenticatedExportsRoute,
+  AuthenticatedHistoriqueRoute: AuthenticatedHistoriqueRoute,
+  AuthenticatedModelesRoute: AuthenticatedModelesRoute,
   AuthenticatedMonPlanningRoute: AuthenticatedMonPlanningRoute,
   AuthenticatedParametresRoute: AuthenticatedParametresRoute,
   AuthenticatedPilotageRoute: AuthenticatedPilotageRoute,
   AuthenticatedPlanningRoute: AuthenticatedPlanningRoute,
   AuthenticatedPolesRoute: AuthenticatedPolesRoute,
+  AuthenticatedPostServiceRoute: AuthenticatedPostServiceRoute,
   AuthenticatedProgrammesRoute: AuthenticatedProgrammesRoute,
+  AuthenticatedRechercheRoute: AuthenticatedRechercheRoute,
   AuthenticatedSollicitationsRoute: AuthenticatedSollicitationsRoute,
   AuthenticatedTableauDeBordRoute: AuthenticatedTableauDeBordRoute,
   AuthenticatedTachesRoute: AuthenticatedTachesRoute,
