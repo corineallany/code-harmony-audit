@@ -105,6 +105,48 @@ function Parametres() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Notifications push</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              Recevez des alertes sur votre appareil pour les nouvelles solicitations, changements de planning et rappels.
+            </p>
+            {push.state === "unsupported" ? (
+              <p className="text-sm text-muted-foreground">Notifications push non supportées par ce navigateur.</p>
+            ) : push.state === "denied" ? (
+              <p className="text-sm text-destructive">
+                Notifications refusées. Autorisez-les dans les paramètres du navigateur.
+              </p>
+            ) : push.subscribed ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-sm text-emerald-600">
+                  <Bell className="size-4" /> Notifications activées
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={push.disable}>
+                    <BellOff className="size-4" /> Désactiver
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => testPushMut.mutate()}
+                    disabled={testPushMut.isPending || testSent}
+                  >
+                    <Send className="size-4" /> {testSent ? "Envoyé ✓" : "Tester"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button size="sm" onClick={push.enable} disabled={push.state === "loading"}>
+                <Bell className="size-4" /> Activer les notifications
+              </Button>
+            )}
+            {push.error && <p className="text-xs text-destructive">{push.error}</p>}
+          </CardContent>
+        </Card>
+
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-base">Permissions par rôle</CardTitle>
