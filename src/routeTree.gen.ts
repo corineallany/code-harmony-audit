@@ -25,6 +25,7 @@ import { Route as AuthenticatedPlanningRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedPolesRouteImport } from './routes/_authenticated/poles'
 import { Route as AuthenticatedPostServiceRouteImport } from './routes/_authenticated/post-service'
 import { Route as AuthenticatedProgrammesRouteImport } from './routes/_authenticated/programmes'
+import { Route as AuthenticatedRechercheRouteImport } from './routes/_authenticated/recherche'
 import { Route as AuthenticatedSollicitationsRouteImport } from './routes/_authenticated/sollicitations'
 import { Route as AuthenticatedTableauDeBordRouteImport } from './routes/_authenticated/tableau-de-bord'
 import { Route as AuthenticatedTachesRouteImport } from './routes/_authenticated/taches'
@@ -114,6 +115,11 @@ const AuthenticatedProgrammesRoute = AuthenticatedProgrammesRouteImport.update({
   path: '/programmes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedRechercheRoute = AuthenticatedRechercheRouteImport.update({
+  id: '/recherche',
+  path: '/recherche',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSollicitationsRoute =
   AuthenticatedSollicitationsRouteImport.update({
     id: '/sollicitations',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/poles': typeof AuthenticatedPolesRoute
   '/post-service': typeof AuthenticatedPostServiceRoute
   '/programmes': typeof AuthenticatedProgrammesRoute
+  '/recherche': typeof AuthenticatedRechercheRoute
   '/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
   '/taches': typeof AuthenticatedTachesRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/poles': typeof AuthenticatedPolesRoute
   '/post-service': typeof AuthenticatedPostServiceRoute
   '/programmes': typeof AuthenticatedProgrammesRoute
+  '/recherche': typeof AuthenticatedRechercheRoute
   '/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
   '/taches': typeof AuthenticatedTachesRoute
@@ -198,6 +206,7 @@ export interface FileRoutesById {
   '/_authenticated/poles': typeof AuthenticatedPolesRoute
   '/_authenticated/post-service': typeof AuthenticatedPostServiceRoute
   '/_authenticated/programmes': typeof AuthenticatedProgrammesRoute
+  '/_authenticated/recherche': typeof AuthenticatedRechercheRoute
   '/_authenticated/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/_authenticated/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
   '/_authenticated/taches': typeof AuthenticatedTachesRoute
@@ -221,6 +230,7 @@ export interface FileRouteTypes {
     | '/poles'
     | '/post-service'
     | '/programmes'
+    | '/recherche'
     | '/sollicitations'
     | '/tableau-de-bord'
     | '/taches'
@@ -242,6 +252,7 @@ export interface FileRouteTypes {
     | '/poles'
     | '/post-service'
     | '/programmes'
+    | '/recherche'
     | '/sollicitations'
     | '/tableau-de-bord'
     | '/taches'
@@ -264,6 +275,7 @@ export interface FileRouteTypes {
     | '/_authenticated/poles'
     | '/_authenticated/post-service'
     | '/_authenticated/programmes'
+    | '/_authenticated/recherche'
     | '/_authenticated/sollicitations'
     | '/_authenticated/tableau-de-bord'
     | '/_authenticated/taches'
@@ -390,6 +402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProgrammesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/recherche': {
+      id: '/_authenticated/recherche'
+      path: '/recherche'
+      fullPath: '/recherche'
+      preLoaderRoute: typeof AuthenticatedRechercheRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/sollicitations': {
       id: '/_authenticated/sollicitations'
       path: '/sollicitations'
@@ -435,6 +454,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPolesRoute: typeof AuthenticatedPolesRoute
   AuthenticatedPostServiceRoute: typeof AuthenticatedPostServiceRoute
   AuthenticatedProgrammesRoute: typeof AuthenticatedProgrammesRoute
+  AuthenticatedRechercheRoute: typeof AuthenticatedRechercheRoute
   AuthenticatedSollicitationsRoute: typeof AuthenticatedSollicitationsRoute
   AuthenticatedTableauDeBordRoute: typeof AuthenticatedTableauDeBordRoute
   AuthenticatedTachesRoute: typeof AuthenticatedTachesRoute
@@ -455,6 +475,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPolesRoute: AuthenticatedPolesRoute,
   AuthenticatedPostServiceRoute: AuthenticatedPostServiceRoute,
   AuthenticatedProgrammesRoute: AuthenticatedProgrammesRoute,
+  AuthenticatedRechercheRoute: AuthenticatedRechercheRoute,
   AuthenticatedSollicitationsRoute: AuthenticatedSollicitationsRoute,
   AuthenticatedTableauDeBordRoute: AuthenticatedTableauDeBordRoute,
   AuthenticatedTachesRoute: AuthenticatedTachesRoute,
