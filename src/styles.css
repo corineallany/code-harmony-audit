@@ -63,44 +63,54 @@
 
 :root {
   --radius: 0.75rem;
-  --background: oklch(0.985 0.003 265);
-  --foreground: oklch(0.23 0.03 265);
+  --background: oklch(0.984 0.003 248);
+  --foreground: oklch(0.279 0.041 260);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.23 0.03 265);
+  --card-foreground: oklch(0.279 0.041 260);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.23 0.03 265);
-  --primary: oklch(0.35 0.18 300);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.007 265);
-  --secondary-foreground: oklch(0.35 0.02 265);
-  --muted: oklch(0.968 0.006 265);
-  --muted-foreground: oklch(0.55 0.03 258);
-  --accent: oklch(0.95 0.03 300);
-  --accent-foreground: oklch(0.4 0.19 299);
-  --destructive: oklch(0.55 0.2 25);
-  --destructive-foreground: oklch(0.98 0.01 85);
-  --success: oklch(0.55 0.13 155);
-  --success-foreground: oklch(0.99 0 0);
-  --warning: oklch(0.72 0.15 65);
-  --warning-foreground: oklch(0.28 0.06 65);
-  --border: oklch(0.92 0.008 265);
-  --input: oklch(0.92 0.008 265);
-  --ring: oklch(0.35 0.18 300);
-  --chart-1: oklch(0.35 0.18 300);
-  --chart-2: oklch(0.4 0.17 265);
-  --chart-3: oklch(0.55 0.13 155);
-  --chart-4: oklch(0.72 0.15 65);
-  --chart-5: oklch(0.6 0.16 25);
-  --sidebar: oklch(0.29 0.16 300);
-  --sidebar-foreground: oklch(0.97 0.005 300);
-  --sidebar-primary: oklch(0.78 0.14 85);
-  --sidebar-primary-foreground: oklch(0.28 0.1 300);
-  --sidebar-accent: oklch(0.37 0.17 300);
-  --sidebar-accent-foreground: oklch(0.98 0.005 300);
-  --sidebar-border: oklch(1 0 0 / 14%);
-  --sidebar-ring: oklch(0.78 0.14 85);
-  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --popover-foreground: oklch(0.279 0.041 260);
+  --primary: oklch(0.336 0.174 297);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.968 0.007 248);
+  --secondary-foreground: oklch(0.35 0.03 260);
+  --muted: oklch(0.968 0.007 248);
+  --muted-foreground: oklch(0.554 0.041 257);
+  --accent: oklch(0.96 0.02 297);
+  --accent-foreground: oklch(0.336 0.174 297);
+  --destructive: oklch(0.577 0.221 27);
+  --destructive-foreground: oklch(1 0 0);
+  --success: oklch(0.596 0.126 163);
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.795 0.162 86);
+  --warning-foreground: oklch(0.336 0.174 297);
+  --border: oklch(0.929 0.013 256);
+  --input: oklch(0.869 0.02 253);
+  --ring: oklch(0.336 0.174 297);
+  --chart-1: oklch(0.336 0.174 297);
+  --chart-2: oklch(0.488 0.217 264);
+  --chart-3: oklch(0.596 0.126 163);
+  --chart-4: oklch(0.795 0.162 86);
+  --chart-5: oklch(0.577 0.221 27);
+  /* Identité ICC Le Mans (codes d'origine de l'application) */
+  --icc-violet: oklch(0.336 0.174 297); /* #4c1d95 */
+  --icc-violet-hover: oklch(0.258 0.155 297); /* #3b0764 */
+  --icc-yellow: oklch(0.795 0.162 86); /* #eab308 */
+  --icc-yellow-hover: oklch(0.7 0.145 78); /* #ca8a04 */
+  --icc-blue: oklch(0.488 0.217 264); /* #1d4ed8 */
+  --icc-green: oklch(0.596 0.126 163); /* #059669 */
+  --sidebar: oklch(0.336 0.174 297);
+  --sidebar-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.795 0.162 86);
+  --sidebar-primary-foreground: oklch(0.336 0.174 297);
+  --sidebar-accent: oklch(0.258 0.155 297);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(1 0 0 / 16%);
+  --sidebar-ring: oklch(0.795 0.162 86);
+  --font-display:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
 }
 
 .dark {
