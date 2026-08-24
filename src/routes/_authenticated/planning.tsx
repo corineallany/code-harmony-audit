@@ -61,7 +61,7 @@ function Planning() {
       ...(solicitations.data ?? []).map((s) => ({
         id: `s-${s.id}`,
         kind: "solicitation" as const,
-        title: s.title,
+        title: s.event_name,
         date: s.event_date,
         status: s.status,
         detail: s.requester ?? "Demandeur inconnu",

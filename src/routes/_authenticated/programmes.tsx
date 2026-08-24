@@ -64,7 +64,6 @@ function Programmes() {
           program_id: programId,
           member_id: member.id,
           status,
-          responded_at: new Date().toISOString(),
         },
         { onConflict: "program_id,member_id" },
       );

@@ -135,6 +135,7 @@ export const RESPONSE_LABEL: Record<ResponseStatus, string> = {
 };
 
 export const STATUS_LABEL: Record<string, string> = {
+  unconfirmed: "À confirmer",
   draft: "Brouillon",
   confirmed: "Confirmé",
   pending: "En attente",

@@ -75,7 +75,7 @@ function Trombinoscope() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((m) => (
-            <Card key={m.id} className={m.active ? "" : "opacity-60"}>
+            <Card key={m.id} className={m.status === "active" ? "" : "opacity-60"}>
               <CardContent className="flex gap-3 p-4">
                 <Avatar className="size-12">
                   {m.photo_url ? <AvatarImage src={m.photo_url} alt={m.full_name} /> : null}
@@ -83,8 +83,8 @@ function Trombinoscope() {
                 </Avatar>
                 <div className="min-w-0">
                   <p className="truncate font-medium">{m.full_name}</p>
-                  {m.phone || m.email ? (
-                    <p className="truncate text-xs text-muted-foreground">{m.phone ?? m.email}</p>
+                  {m.login_email ? (
+                    <p className="truncate text-xs text-muted-foreground">{m.login_email}</p>
                   ) : null}
                   <div className="mt-2 flex flex-wrap gap-1">
                     {m.poles.length === 0 ? (

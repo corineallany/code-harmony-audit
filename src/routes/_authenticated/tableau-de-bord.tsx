@@ -39,8 +39,8 @@ function Dashboard() {
   const stats = [
     { label: "Programmes à venir", value: upcoming.length, to: "/programmes" },
     { label: "Sollicitations en attente", value: pending.length, to: "/sollicitations" },
-    { label: "Équipiers actifs", value: (members.data?.members ?? []).filter((m) => m.active).length, to: "/trombinoscope" },
-    { label: "Pôles", value: (poles.data ?? []).filter((p) => p.active).length, to: "/poles" },
+    { label: "Équipiers actifs", value: (members.data?.members ?? []).filter((m) => m.status === "active").length, to: "/trombinoscope" },
+    { label: "Pôles", value: (poles.data ?? []).filter((p) => !p.archived).length, to: "/poles" },
   ];
 
   return (
@@ -98,7 +98,7 @@ function Dashboard() {
             ) : (
               pending.slice(0, 6).map((s) => (
                 <div key={s.id} className="rounded-lg border border-border p-3">
-                  <p className="font-medium">{s.title}</p>
+                  <p className="font-medium">{s.event_name}</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {s.requester ?? "Demandeur inconnu"} · {formatDate(s.event_date)}
                   </p>

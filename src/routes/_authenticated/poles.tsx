@@ -44,7 +44,7 @@ function Poles() {
   const groups = useMemo(() => {
     const grouped = new Map<string, typeof poles.data>();
     for (const pole of poles.data ?? []) {
-      const key = pole.group_name ?? "Autres pôles";
+      const key = pole.pole_group ?? "Autres pôles";
       grouped.set(key, [...((grouped.get(key) ?? []) as NonNullable<typeof poles.data>), pole]);
     }
     return [...grouped.entries()];
@@ -77,7 +77,7 @@ function Poles() {
                 {(list ?? []).map((pole) => {
                   const people = byPole.get(pole.id) ?? [];
                   return (
-                    <Card key={pole.id} className={pole.active ? "" : "opacity-60"}>
+                    <Card key={pole.id} className={pole.archived ? "opacity-60" : ""}>
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between gap-2">
                           <CardTitle className="text-base">{pole.name}</CardTitle>

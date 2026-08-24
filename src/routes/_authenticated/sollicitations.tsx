@@ -37,20 +37,20 @@ function Sollicitations() {
     mutationFn: async ({ id, status }: { id: string; status: "accepted" | "refused" }) => {
       const { error } = await supabase
         .from("solicitations")
-        .update({ status, decided_at: new Date().toISOString() })
+        .update({ status, decision: status, decision_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw new Error(error.message);
       await supabase.from("solicitation_decision_history").insert({
         id: `d${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
         solicitation_id: id,
-        status,
-        actor_name: member?.full_name ?? null,
+        decision: status,
+        changed_by: member?.full_name ?? null,
       });
       await logAction({
         action: "decision_sollicitation",
         entity: "solicitation",
         entityId: id,
-        detail: STATUS_LABEL[status],
+        detail: STATUS_LABEL[status] ?? status,
         actorName: member?.full_name,
       });
     },
@@ -83,7 +83,7 @@ function Sollicitations() {
             <Card key={s.id}>
               <CardHeader className="gap-1">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <CardTitle className="text-base">{s.title}</CardTitle>
+                  <CardTitle className="text-base">{s.event_name}</CardTitle>
                   <Badge variant={s.status === "pending" ? "outline" : "secondary"}>
                     {STATUS_LABEL[s.status] ?? s.status}
                   </Badge>
@@ -93,7 +93,7 @@ function Sollicitations() {
                 </p>
               </CardHeader>
               <CardContent className="space-y-3">
-                {s.description ? <p className="text-sm">{s.description}</p> : null}
+                {s.message ? <p className="text-sm">{s.message}</p> : null}
                 {isStaff && s.status === "pending" ? (
                   <div className="flex gap-2">
                     <Button size="sm" disabled={decide.isPending} onClick={() => decide.mutate({ id: s.id, status: "accepted" })}>

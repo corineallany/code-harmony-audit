@@ -69,7 +69,7 @@ function Parametres() {
           <CardContent className="space-y-1 text-sm">
             <p>
               <span className="text-muted-foreground">Nom de l’application : </span>
-              {settings.data?.app_name ?? "COM ICC Le Mans"}
+              {settings.data?.home_title ?? "COM ICC Le Mans"}
             </p>
             <p>
               <span className="text-muted-foreground">Dernière mise à jour : </span>
