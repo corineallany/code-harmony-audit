@@ -54,7 +54,6 @@ export function useCurrentRole() {
         supabase.from("members").select("id, full_name, photo_url").eq("auth_user_id", user!.id).maybeSingle(),
       ]);
 
-      const order: AppRole[] = ["responsable", "adjoint", "referent", "equipier"];
       // Rôle hiérarchique affiché ; « admin_technique » est un accès transversal, pas un niveau.
       const order: AppRole[] = ["responsable", "adjoint", "referent", "equipier"];
       const roles = (rolesRes.data ?? []).map((r) => r.role as AppRole);
