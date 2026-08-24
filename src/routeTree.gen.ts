@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedAdministrationRouteImport } from './routes/_authenticated/administration'
 import { Route as AuthenticatedParametresRouteImport } from './routes/_authenticated/parametres'
 import { Route as AuthenticatedPilotageRouteImport } from './routes/_authenticated/pilotage'
 import { Route as AuthenticatedPlanningRouteImport } from './routes/_authenticated/planning'
@@ -35,6 +36,12 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdministrationRoute =
+  AuthenticatedAdministrationRouteImport.update({
+    id: '/administration',
+    path: '/administration',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedParametresRoute = AuthenticatedParametresRouteImport.update({
   id: '/parametres',
   path: '/parametres',
@@ -82,6 +89,7 @@ const AuthenticatedTrombinoscopeRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/administration': typeof AuthenticatedAdministrationRoute
   '/parametres': typeof AuthenticatedParametresRoute
   '/pilotage': typeof AuthenticatedPilotageRoute
   '/planning': typeof AuthenticatedPlanningRoute
@@ -94,6 +102,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/administration': typeof AuthenticatedAdministrationRoute
   '/parametres': typeof AuthenticatedParametresRoute
   '/pilotage': typeof AuthenticatedPilotageRoute
   '/planning': typeof AuthenticatedPlanningRoute
@@ -108,6 +117,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/administration': typeof AuthenticatedAdministrationRoute
   '/_authenticated/parametres': typeof AuthenticatedParametresRoute
   '/_authenticated/pilotage': typeof AuthenticatedPilotageRoute
   '/_authenticated/planning': typeof AuthenticatedPlanningRoute
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/administration'
     | '/parametres'
     | '/pilotage'
     | '/planning'
@@ -134,6 +145,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/administration'
     | '/parametres'
     | '/pilotage'
     | '/planning'
@@ -147,6 +159,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/administration'
     | '/_authenticated/parametres'
     | '/_authenticated/pilotage'
     | '/_authenticated/planning'
@@ -185,6 +198,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/administration': {
+      id: '/_authenticated/administration'
+      path: '/administration'
+      fullPath: '/administration'
+      preLoaderRoute: typeof AuthenticatedAdministrationRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/parametres': {
       id: '/_authenticated/parametres'
@@ -246,6 +266,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdministrationRoute: typeof AuthenticatedAdministrationRoute
   AuthenticatedParametresRoute: typeof AuthenticatedParametresRoute
   AuthenticatedPilotageRoute: typeof AuthenticatedPilotageRoute
   AuthenticatedPlanningRoute: typeof AuthenticatedPlanningRoute
@@ -257,6 +278,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdministrationRoute: AuthenticatedAdministrationRoute,
   AuthenticatedParametresRoute: AuthenticatedParametresRoute,
   AuthenticatedPilotageRoute: AuthenticatedPilotageRoute,
   AuthenticatedPlanningRoute: AuthenticatedPlanningRoute,

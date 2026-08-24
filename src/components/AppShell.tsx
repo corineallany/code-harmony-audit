@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Users,
   Boxes,
+  SlidersHorizontal,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -18,20 +19,24 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/tableau-de-bord", label: "Tableau de bord", icon: LayoutDashboard, staffOnly: false },
-  { to: "/planning", label: "Planning", icon: CalendarDays, staffOnly: false },
-  { to: "/programmes", label: "Programmes", icon: ClipboardList, staffOnly: false },
-  { to: "/sollicitations", label: "Sollicitations", icon: Inbox, staffOnly: false },
-  { to: "/trombinoscope", label: "Trombinoscope", icon: Users, staffOnly: false },
-  { to: "/poles", label: "Pôles", icon: Boxes, staffOnly: false },
-  { to: "/pilotage", label: "Pilotage", icon: ShieldCheck, staffOnly: true },
-  { to: "/parametres", label: "Paramètres", icon: Settings, staffOnly: true },
+  { to: "/tableau-de-bord", label: "Tableau de bord", icon: LayoutDashboard, adminOnly: false, staffOnly: false },
+  { to: "/planning", label: "Planning", icon: CalendarDays, adminOnly: false, staffOnly: false },
+  { to: "/programmes", label: "Programmes", icon: ClipboardList, adminOnly: false, staffOnly: false },
+  { to: "/sollicitations", label: "Sollicitations", icon: Inbox, adminOnly: false, staffOnly: false },
+  { to: "/trombinoscope", label: "Trombinoscope", icon: Users, adminOnly: false, staffOnly: false },
+  { to: "/poles", label: "Pôles", icon: Boxes, adminOnly: false, staffOnly: false },
+  { to: "/administration", label: "Administration", icon: SlidersHorizontal, adminOnly: true, staffOnly: true },
+  { to: "/pilotage", label: "Pilotage", icon: ShieldCheck, adminOnly: false, staffOnly: true },
+  { to: "/parametres", label: "Paramètres", icon: Settings, adminOnly: false, staffOnly: true },
 ] as const;
 
+
 export function AppShell({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
-  const { role, member, isStaff } = useCurrentRole();
+  const { role, member, isStaff, isAdmin } = useCurrentRole();
   const router = useRouter();
-  const items = NAV.filter((item) => !item.staffOnly || isStaff);
+  const items = NAV.filter(
+    (item) => (!item.staffOnly || isStaff) && (!item.adminOnly || isAdmin),
+  );
 
   async function signOut() {
     await supabase.auth.signOut();
