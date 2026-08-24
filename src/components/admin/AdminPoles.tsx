@@ -224,5 +224,3 @@ export function AdminPoles() {
     </div>
   );
 }
-
-export { newId };
