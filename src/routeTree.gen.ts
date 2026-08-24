@@ -23,6 +23,7 @@ import { Route as AuthenticatedParametresRouteImport } from './routes/_authentic
 import { Route as AuthenticatedPilotageRouteImport } from './routes/_authenticated/pilotage'
 import { Route as AuthenticatedPlanningRouteImport } from './routes/_authenticated/planning'
 import { Route as AuthenticatedPolesRouteImport } from './routes/_authenticated/poles'
+import { Route as AuthenticatedPostServiceRouteImport } from './routes/_authenticated/post-service'
 import { Route as AuthenticatedProgrammesRouteImport } from './routes/_authenticated/programmes'
 import { Route as AuthenticatedSollicitationsRouteImport } from './routes/_authenticated/sollicitations'
 import { Route as AuthenticatedTableauDeBordRouteImport } from './routes/_authenticated/tableau-de-bord'
@@ -102,6 +103,12 @@ const AuthenticatedPolesRoute = AuthenticatedPolesRouteImport.update({
   path: '/poles',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPostServiceRoute =
+  AuthenticatedPostServiceRouteImport.update({
+    id: '/post-service',
+    path: '/post-service',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProgrammesRoute = AuthenticatedProgrammesRouteImport.update({
   id: '/programmes',
   path: '/programmes',
@@ -145,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/pilotage': typeof AuthenticatedPilotageRoute
   '/planning': typeof AuthenticatedPlanningRoute
   '/poles': typeof AuthenticatedPolesRoute
+  '/post-service': typeof AuthenticatedPostServiceRoute
   '/programmes': typeof AuthenticatedProgrammesRoute
   '/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
@@ -165,6 +173,7 @@ export interface FileRoutesByTo {
   '/pilotage': typeof AuthenticatedPilotageRoute
   '/planning': typeof AuthenticatedPlanningRoute
   '/poles': typeof AuthenticatedPolesRoute
+  '/post-service': typeof AuthenticatedPostServiceRoute
   '/programmes': typeof AuthenticatedProgrammesRoute
   '/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
@@ -187,6 +196,7 @@ export interface FileRoutesById {
   '/_authenticated/pilotage': typeof AuthenticatedPilotageRoute
   '/_authenticated/planning': typeof AuthenticatedPlanningRoute
   '/_authenticated/poles': typeof AuthenticatedPolesRoute
+  '/_authenticated/post-service': typeof AuthenticatedPostServiceRoute
   '/_authenticated/programmes': typeof AuthenticatedProgrammesRoute
   '/_authenticated/sollicitations': typeof AuthenticatedSollicitationsRoute
   '/_authenticated/tableau-de-bord': typeof AuthenticatedTableauDeBordRoute
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/pilotage'
     | '/planning'
     | '/poles'
+    | '/post-service'
     | '/programmes'
     | '/sollicitations'
     | '/tableau-de-bord'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/pilotage'
     | '/planning'
     | '/poles'
+    | '/post-service'
     | '/programmes'
     | '/sollicitations'
     | '/tableau-de-bord'
@@ -250,6 +262,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pilotage'
     | '/_authenticated/planning'
     | '/_authenticated/poles'
+    | '/_authenticated/post-service'
     | '/_authenticated/programmes'
     | '/_authenticated/sollicitations'
     | '/_authenticated/tableau-de-bord'
@@ -363,6 +376,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPolesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/post-service': {
+      id: '/_authenticated/post-service'
+      path: '/post-service'
+      fullPath: '/post-service'
+      preLoaderRoute: typeof AuthenticatedPostServiceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/programmes': {
       id: '/_authenticated/programmes'
       path: '/programmes'
@@ -413,6 +433,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPilotageRoute: typeof AuthenticatedPilotageRoute
   AuthenticatedPlanningRoute: typeof AuthenticatedPlanningRoute
   AuthenticatedPolesRoute: typeof AuthenticatedPolesRoute
+  AuthenticatedPostServiceRoute: typeof AuthenticatedPostServiceRoute
   AuthenticatedProgrammesRoute: typeof AuthenticatedProgrammesRoute
   AuthenticatedSollicitationsRoute: typeof AuthenticatedSollicitationsRoute
   AuthenticatedTableauDeBordRoute: typeof AuthenticatedTableauDeBordRoute
@@ -432,6 +453,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPilotageRoute: AuthenticatedPilotageRoute,
   AuthenticatedPlanningRoute: AuthenticatedPlanningRoute,
   AuthenticatedPolesRoute: AuthenticatedPolesRoute,
+  AuthenticatedPostServiceRoute: AuthenticatedPostServiceRoute,
   AuthenticatedProgrammesRoute: AuthenticatedProgrammesRoute,
   AuthenticatedSollicitationsRoute: AuthenticatedSollicitationsRoute,
   AuthenticatedTableauDeBordRoute: AuthenticatedTableauDeBordRoute,
