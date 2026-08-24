@@ -6,6 +6,7 @@ export type AvailabilityRow = {
   starts_at: string;
   ends_at: string;
   note: string | null;
+  status?: string | null;
 };
 
 export type ConflictKind = "overlap" | "unavailable" | "absence" | "no_pole" | "no_member" | "pending";
@@ -126,6 +127,7 @@ export function detectConflicts(
       const day = new Date(`${p.start_date}T12:00:00`).getTime();
       for (const a of availability) {
         if (!assigned.includes(a.member_id)) continue;
+        if (a.status === "refused") continue; // une indisponibilité refusée ne bloque pas
         const from = new Date(a.starts_at).getTime();
         const to = new Date(a.ends_at).getTime();
         if (day < from || day > to) continue;
