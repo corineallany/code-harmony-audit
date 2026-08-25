@@ -189,13 +189,7 @@ function MemberPage() {
         if (insert.error) throw new Error(insert.error.message);
       }
 
-      await logAction({
-        action: isNew ? "membre_cree" : "membre_modifie",
-        entity: "member",
-        entityId: memberId,
-        detail: full_name,
-        actorName: actor?.full_name,
-      });
+      await logAction({ action: isNew ? "membre_cree" : "membre_modifie", entity: "member", entityId: memberId, detail: full_name, actorName: actor?.full_name });
       return memberId;
     },
     onSuccess: async (memberId) => {
@@ -242,9 +236,9 @@ function MemberPage() {
               <Avatar className="size-24"><AvatarImage src={row.photo_url ?? undefined} /><AvatarFallback>{initials(row.full_name)}</AvatarFallback></Avatar>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-black text-icc-violet">{row.full_name}</h2><Badge>{statusLabel}</Badge></div>
-                <div className="mt-2 flex flex-wrap gap-1">
+                <div className="mt-2 flex flex-wrap items-center gap-1">
                   {row.base_role !== "equipier" && row.base_role !== "referent" ? <Badge variant="outline">{ROLE_LABEL[row.base_role as keyof typeof ROLE_LABEL]}</Badge> : null}
-                  {referentPoles.map((p) => <Badge key={p.pole_id} variant="outline">🏅 Référent · {p.name}</Badge>)}
+                  {referentPoles.length ? <><Badge variant="outline">🏅 Référent</Badge><strong className="text-sm">{referentPoles.map((p) => p.name).join(" · ")}</strong></> : null}
                   {row.is_icc ? <Badge variant="secondary">ICC</Badge> : null}
                   {row.is_ejp ? <Badge variant="secondary">EJP</Badge> : null}
                 </div>
