@@ -1,179 +1,101 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 
 import { AppShell, EmptyState } from "@/components/AppShell";
-import {
-  formatDate,
-  logAction,
-  membersQuery,
-  polesQuery,
-  programsQuery,
-  RESPONSE_LABEL,
-  STATUS_LABEL,
-  type ResponseStatus,
-} from "@/lib/icc";
-import { useCurrentRole } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { formatDate, membersQuery, polesQuery, programsQuery, recurrenceLabel, STATUS_LABEL } from "@/lib/icc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const Route = createFileRoute("/_authenticated/programmes")({
-  head: () => ({
-    meta: [
-      { title: "Programmes — COM ICC Le Mans" },
-      {
-        name: "description",
-        content: "Programmes du pôle Communication : affectations par pôle, tâches et disponibilités des équipiers.",
-      },
-      { property: "og:title", content: "Programmes — COM ICC Le Mans" },
-      { property: "og:description", content: "Affectations par pôle, tâches et réponses de disponibilité." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: Programmes,
-});
+export const Route = createFileRoute("/_authenticated/programmes")({ component: Programmes });
 
-const RESPONSES: ResponseStatus[] = ["available", "partial", "unavailable"];
+const statusClass: Record<string, string> = {
+  confirmed: "bg-green-100 text-green-800 border-green-200",
+  unconfirmed: "bg-amber-100 text-amber-800 border-amber-200",
+  postponed: "bg-blue-100 text-blue-800 border-blue-200",
+  cancelled: "bg-red-100 text-red-800 border-red-200",
+};
 
 function Programmes() {
   const programs = useQuery(programsQuery);
   const poles = useQuery(polesQuery);
   const members = useQuery(membersQuery);
-  const { member } = useCurrentRole();
-  const queryClient = useQueryClient();
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [type, setType] = useState("all");
+  const [format, setFormat] = useState("all");
+  const [recurrence, setRecurrence] = useState("all");
+  const [importance, setImportance] = useState("all");
 
   const poleName = useMemo(() => new Map((poles.data ?? []).map((p) => [p.id, p.name])), [poles.data]);
-  const memberName = useMemo(
-    () => new Map((members.data?.members ?? []).map((m) => [m.id, m.full_name])),
-    [members.data],
-  );
-
-  /** Une seule voie d'écriture pour la réponse de disponibilité (upsert idempotent). */
-  const respond = useMutation({
-    mutationFn: async ({ programId, status }: { programId: string; status: ResponseStatus }) => {
-      if (!member?.id) throw new Error("Votre compte n'est lié à aucun équipier.");
-      const { error } = await supabase.from("program_member_responses").upsert(
-        {
-          id: `${programId}__${member.id}`,
-          program_id: programId,
-          member_id: member.id,
-          status,
-        },
-        { onConflict: "program_id,member_id" },
-      );
-      if (error) throw new Error(error.message);
-      await logAction({
-        action: "reponse_disponibilite",
-        entity: "program",
-        entityId: programId,
-        detail: RESPONSE_LABEL[status],
-        actorName: member.full_name,
-      });
-    },
-    onSuccess: () => {
-      toast.success("Réponse enregistrée");
-      queryClient.invalidateQueries({ queryKey: ["programs"] });
-    },
-    onError: (error: Error) => toast.error("Enregistrement impossible", { description: error.message }),
+  const memberName = useMemo(() => new Map((members.data?.members ?? []).map((m) => [m.id, m.full_name])), [members.data]);
+  const filtered = (programs.data ?? []).filter((p) => {
+    const q = search.trim().toLowerCase();
+    return (!q || [p.title, p.location, p.description].some((v) => v?.toLowerCase().includes(q))) &&
+      (status === "all" || p.status === status) && (type === "all" || p.program_type === type) &&
+      (format === "all" || p.format === format) && (recurrence === "all" || (p.recurrence ?? "ponctuel") === recurrence) &&
+      (importance === "all" || p.importance === importance);
   });
 
-  if (programs.isLoading) {
-    return (
-      <AppShell title="Programmes">
-        <div className="space-y-3">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" />
-          ))}
-        </div>
-      </AppShell>
-    );
-  }
+  if (programs.isLoading) return <AppShell title="Programmes"><Skeleton className="h-40 rounded-xl" /></AppShell>;
 
   return (
-    <AppShell title="Programmes" subtitle="Affectations par pôle et disponibilités">
-      {(programs.data ?? []).length === 0 ? (
-        <EmptyState title="Aucun programme" />
-      ) : (
+    <AppShell title="Programmes" subtitle="Programmes, équipes mobilisées et informations de service">
+      <div className="mb-5 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+        <Input placeholder="Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Filter value={status} onChange={setStatus} placeholder="Statut" items={[["all","Tous les statuts"],["confirmed","Confirmé"],["unconfirmed","Non confirmé"],["postponed","Reporté"],["cancelled","Annulé"]]} />
+        <Filter value={type} onChange={setType} placeholder="Type" items={[["all","Tous les types"],["Église","Église"],["Corporate","Corporate"],["Autre église-Invitation","Autre église-Invitation"],["Interne Com","Interne Com"]]} />
+        <Filter value={format} onChange={setFormat} placeholder="Format" items={[["all","Tous les formats"],["Présentiel","Présentiel"],["En ligne","En ligne"],["Présentiel + En ligne","Présentiel + En ligne"],["Déplacement","Déplacement"],["Déplacement + Connecté","Déplacement + Connecté"]]} />
+        <Filter value={recurrence} onChange={setRecurrence} placeholder="Récurrence" items={[["all","Toutes récurrences"],["ponctuel","Ponctuel"],["hebdo","Hebdomadaire"],["1_semaine_sur_2","Une semaine sur 2"],["bimensuel","Bimensuel"],["mensuel","Mensuel"],["trimestriel","Trimestriel"],["annuel","Annuel"]]} />
+        <Filter value={importance} onChange={setImportance} placeholder="Importance" items={[["all","Toutes importances"],["critical","Critique"],["important","Importante"],["normal","Normale"],["low","Faible"]]} />
+      </div>
+
+      {filtered.length === 0 ? <EmptyState title="Aucun programme" /> : (
         <div className="space-y-4">
-          {(programs.data ?? []).map((program) => {
-            const mine = program.responses.find((r) => r.member_id === member?.id);
-            const open = openId === program.id;
-            return (
-              <Card key={program.id}>
-                <CardHeader className="gap-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <CardTitle className="text-base">{program.title}</CardTitle>
-                    <Badge variant="secondary">{STATUS_LABEL[program.status] ?? program.status}</Badge>
+          {filtered.map((program) => (
+            <article key={program.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex flex-wrap gap-2 text-xs font-bold">
+                    <Badge className={statusClass[program.status] ?? ""}>{STATUS_LABEL[program.status] ?? program.status}</Badge>
+                    {program.program_type ? <Badge variant="outline">{program.program_type}</Badge> : null}
+                    {program.format ? <Badge variant="outline">{program.format}</Badge> : null}
+                    {program.importance ? <Badge variant="secondary">{importanceLabel(program.importance)}</Badge> : null}
+                    <Badge variant="outline">{recurrenceLabel(program.recurrence)}</Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {formatDate(program.start_date)}
-                    {program.location ? ` · ${program.location}` : ""}
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex flex-wrap gap-2">
-                    {RESPONSES.map((status) => (
-                      <Button
-                        key={status}
-                        size="sm"
-                        variant={mine?.status === status ? "default" : "outline"}
-                        disabled={respond.isPending || !member?.id}
-                        onClick={() => respond.mutate({ programId: program.id, status })}
-                      >
-                        {RESPONSE_LABEL[status]}
-                      </Button>
-                    ))}
-                  </div>
+                  <Link to="/programme/$id" params={{ id: program.id }} className="text-lg font-black text-icc-violet hover:underline">{program.title}</Link>
+                  <p className="mt-1 text-sm font-semibold">📅 {formatDate(program.start_date)}{program.start_time ? ` · ${program.start_time.slice(0,5)}` : ""}</p>
+                  {program.location ? <p className="mt-1 text-sm text-muted-foreground">{program.location}</p> : null}
+                </div>
+                <div className="max-w-sm text-right text-sm">
+                  <b>Pôles</b>
+                  <p className="text-muted-foreground">{program.assignments.length ? program.assignments.map((a) => poleName.get(a.pole_id) ?? "Pôle").join(" · ") : "—"}</p>
+                </div>
+              </div>
 
-                  <Button variant="ghost" size="sm" onClick={() => setOpenId(open ? null : program.id)}>
-                    {open ? "Masquer le détail" : `Détail (${program.assignments.length} pôle(s))`}
-                  </Button>
+              {program.assignments.map((a) => (
+                <div key={a.id} className="mt-3 rounded-xl border-l-4 border-icc-violet bg-muted/40 p-3">
+                  <div className="flex items-center justify-between gap-2"><b className="text-icc-violet">{poleName.get(a.pole_id) ?? "Pôle"}</b><small className="text-muted-foreground">{a.memberIds.length} affecté(s)</small></div>
+                  {a.memberIds.length ? <div className="mt-2 space-y-1">{a.memberIds.map((mid) => <div key={mid} className="rounded-lg bg-background px-3 py-2 text-sm font-semibold">{memberName.get(mid) ?? mid}</div>)}</div> : null}
+                  <p className="mt-2 text-sm"><b>Tâches :</b> {a.tasks || "—"}</p>
+                </div>
+              ))}
 
-                  {open ? (
-                    <div className="space-y-3 border-t border-border pt-3">
-                      {program.assignments.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Aucun pôle affecté.</p>
-                      ) : (
-                        program.assignments.map((a) => (
-                          <div key={a.id} className="rounded-lg bg-muted/60 p-3">
-                            <p className="font-medium">{poleName.get(a.pole_id) ?? "Pôle inconnu"}</p>
-                            {a.tasks ? <p className="mt-1 text-sm text-muted-foreground">{a.tasks}</p> : null}
-                            {a.memberIds.length > 0 ? (
-                              <p className="mt-1 text-sm">
-                                {a.memberIds.map((id) => memberName.get(id) ?? id).join(", ")}
-                              </p>
-                            ) : null}
-                          </div>
-                        ))
-                      )}
-
-                      {program.responses.length > 0 ? (
-                        <div>
-                          <p className="text-sm font-semibold">Réponses</p>
-                          <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
-                            {program.responses.map((r) => (
-                              <li key={r.member_id}>
-                                {memberName.get(r.member_id) ?? r.member_id} — {RESPONSE_LABEL[r.status]}
-                                {r.reason ? ` (${r.reason})` : ""}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
-            );
-          })}
+              {program.general_note ? <div className="mt-3 rounded-xl border border-purple-100 bg-purple-50 p-3 text-sm"><b className="text-icc-violet">Note générale</b><p>{program.general_note}</p></div> : null}
+              {program.description ? <p className="mt-3 text-sm text-muted-foreground">{program.description}</p> : null}
+              <div className="mt-3"><Button asChild size="sm" variant="link" className="px-0 text-icc-violet"><Link to="/programme/$id" params={{ id: program.id }}>Ouvrir la fiche complète</Link></Button></div>
+            </article>
+          ))}
         </div>
       )}
     </AppShell>
   );
 }
+
+function Filter({ value, onChange, placeholder, items }: { value: string; onChange: (v:string)=>void; placeholder:string; items:string[][] }) {
+  return <Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue placeholder={placeholder}/></SelectTrigger><SelectContent>{items.map(([v,l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select>;
+}
+function importanceLabel(v:string) { return ({ critical:"Critique", important:"Importante", normal:"Normale", low:"Faible", critique:"Critique", haute:"Importante", normale:"Normale", faible:"Faible" } as Record<string,string>)[v] ?? v; }
