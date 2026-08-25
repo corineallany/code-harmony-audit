@@ -27,7 +27,6 @@ function initials(name: string) {
 function memberState(m: any) {
   if (m.status === "archived") return "archived";
   if (m.status === "inactive") return "inactive";
-  if (m.partially_inactive) return "partial";
   if (m.status === "active" && m.training_start && !m.training_done) return "training";
   return "active";
 }
@@ -35,7 +34,6 @@ function memberState(m: any) {
 function stateLabel(m: any) {
   const state = memberState(m);
   if (state === "training") return "En formation";
-  if (state === "partial") return "Partiellement inactif";
   if (state === "inactive") return "Inactif";
   if (state === "archived") return "Archivé";
   return "Actif";
@@ -110,7 +108,7 @@ function Trombinoscope() {
 
       <div className="mb-5 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
         <Input placeholder="Rechercher un membre…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <Filter value={status} onChange={setStatus} items={[["all","Tous les statuts"],["active","Actif"],["training","En formation"],["partial","Partiellement inactif"],["inactive","Inactif"],["archived","Archivé"]]} />
+        <Filter value={status} onChange={setStatus} items={[["all","Tous les statuts"],["active","Actif"],["training","En formation"],["inactive","Inactif"],["archived","Archivé"]]} />
         <Filter value={role} onChange={setRole} items={[["all","Tous les rôles"],["responsable","Responsable"],["adjoint","Adjoint"],["referent","Référent"],["equipier","Équipier"],["admin_technique","Admin technique"]]} />
         <Filter value={pole} onChange={setPole} items={[["all","Tous les pôles"], ...activePoles.map((p) => [p.id, p.name])]} />
         <Filter value={sort} onChange={setSort} items={[["name","Nom A–Z"],["arrival-new","Intégration récente"],["arrival-old","Ancienneté"],["birthday","Anniversaire proche"]]} />
@@ -138,11 +136,11 @@ function Trombinoscope() {
                           <p className="truncate font-black text-icc-violet">{m.full_name}</p>
                           <Badge variant={state === "active" ? "default" : "secondary"}>{stateLabel(m)}</Badge>
                         </div>
-                        <div className="mt-2 flex flex-wrap gap-1">
+                        <div className="mt-2 flex flex-wrap items-center gap-1">
                           {m.base_role !== "equipier" && m.base_role !== "referent" ? <Badge variant="outline">{ROLE_LABEL[m.base_role] ?? m.base_role}</Badge> : null}
                           {m.is_icc ? <Badge variant="outline">✨ ICC</Badge> : null}
                           {m.is_ejp ? <Badge variant="outline">⭐ EJP</Badge> : null}
-                          {referentPoles.map((p: any) => <Badge key={`ref-${p.id}`} variant="outline">🏅 Référent · {p.name}</Badge>)}
+                          {referentPoles.length ? <><Badge variant="outline">🏅 Référent</Badge><strong className="text-xs">{referentPoles.map((p: any) => p.name).join(" · ")}</strong></> : null}
                         </div>
                       </div>
                     </div>
