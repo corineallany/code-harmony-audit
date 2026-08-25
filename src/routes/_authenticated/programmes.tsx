@@ -43,7 +43,11 @@ function Programmes() {
   if (programs.isLoading) return <AppShell title="Programmes"><Skeleton className="h-40 rounded-xl" /></AppShell>;
 
   return (
-    <AppShell title="Programmes" subtitle="Programmes, équipes mobilisées et informations de service">
+    <AppShell
+      title="Programmes"
+      subtitle="Programmes, équipes mobilisées et informations de service"
+      actions={<Button asChild size="sm"><Link to="/administration" search={{ newProgram: "1" } as any}>+ Nouveau programme</Link></Button>}
+    >
       <div className="mb-5 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
         <Input placeholder="Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} />
         <Filter value={status} onChange={setStatus} placeholder="Statut" items={[["all","Tous les statuts"],["confirmed","Confirmé"],["unconfirmed","Non confirmé"],["postponed","Reporté"],["cancelled","Annulé"]]} />
@@ -70,20 +74,9 @@ function Programmes() {
                   <p className="mt-1 text-sm font-semibold">📅 {formatDate(program.start_date)}{program.start_time ? ` · ${program.start_time.slice(0,5)}` : ""}</p>
                   {program.location ? <p className="mt-1 text-sm text-muted-foreground">{program.location}</p> : null}
                 </div>
-                <div className="max-w-sm text-right text-sm">
-                  <b>Pôles</b>
-                  <p className="text-muted-foreground">{program.assignments.length ? program.assignments.map((a) => poleName.get(a.pole_id) ?? "Pôle").join(" · ") : "—"}</p>
-                </div>
+                <div className="max-w-sm text-right text-sm"><b>Pôles</b><p className="text-muted-foreground">{program.assignments.length ? program.assignments.map((a) => poleName.get(a.pole_id) ?? "Pôle").join(" · ") : "—"}</p></div>
               </div>
-
-              {program.assignments.map((a) => (
-                <div key={a.id} className="mt-3 rounded-xl border-l-4 border-icc-violet bg-muted/40 p-3">
-                  <div className="flex items-center justify-between gap-2"><b className="text-icc-violet">{poleName.get(a.pole_id) ?? "Pôle"}</b><small className="text-muted-foreground">{a.memberIds.length} affecté(s)</small></div>
-                  {a.memberIds.length ? <div className="mt-2 space-y-1">{a.memberIds.map((mid) => <div key={mid} className="rounded-lg bg-background px-3 py-2 text-sm font-semibold">{memberName.get(mid) ?? mid}</div>)}</div> : null}
-                  <p className="mt-2 text-sm"><b>Tâches :</b> {a.tasks || "—"}</p>
-                </div>
-              ))}
-
+              {program.assignments.map((a) => <div key={a.id} className="mt-3 rounded-xl border-l-4 border-icc-violet bg-muted/40 p-3"><div className="flex items-center justify-between gap-2"><b className="text-icc-violet">{poleName.get(a.pole_id) ?? "Pôle"}</b><small className="text-muted-foreground">{a.memberIds.length} affecté(s)</small></div>{a.memberIds.length ? <div className="mt-2 space-y-1">{a.memberIds.map((mid) => <div key={mid} className="rounded-lg bg-background px-3 py-2 text-sm font-semibold">{memberName.get(mid) ?? mid}</div>)}</div> : null}<p className="mt-2 text-sm"><b>Tâches :</b> {a.tasks || "—"}</p></div>)}
               {program.general_note ? <div className="mt-3 rounded-xl border border-purple-100 bg-purple-50 p-3 text-sm"><b className="text-icc-violet">Note générale</b><p>{program.general_note}</p></div> : null}
               {program.description ? <p className="mt-3 text-sm text-muted-foreground">{program.description}</p> : null}
               <div className="mt-3"><Button asChild size="sm" variant="link" className="px-0 text-icc-violet"><Link to="/programme/$id" params={{ id: program.id }}>Ouvrir la fiche complète</Link></Button></div>
@@ -94,8 +87,5 @@ function Programmes() {
     </AppShell>
   );
 }
-
-function Filter({ value, onChange, placeholder, items }: { value: string; onChange: (v:string)=>void; placeholder:string; items:string[][] }) {
-  return <Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue placeholder={placeholder}/></SelectTrigger><SelectContent>{items.map(([v,l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select>;
-}
+function Filter({ value, onChange, placeholder, items }: { value: string; onChange: (v:string)=>void; placeholder:string; items:string[][] }) { return <Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue placeholder={placeholder}/></SelectTrigger><SelectContent>{items.map(([v,l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select>; }
 function importanceLabel(v:string) { return ({ critical:"Critique", important:"Importante", normal:"Normale", low:"Faible", critique:"Critique", haute:"Importante", normale:"Normale", faible:"Faible" } as Record<string,string>)[v] ?? v; }
