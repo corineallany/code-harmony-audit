@@ -18,16 +18,36 @@ function unwrap<T>(res: { data: T | null; error: { message: string } | null }): 
   return (res.data ?? []) as T;
 }
 
-export const polesQuery = queryOptions({ queryKey: ["poles"], queryFn: async () => unwrap(await supabase.from("poles").select("*").order("sort_order", { ascending: true })) });
+export const polesQuery = queryOptions({
+  queryKey: ["poles"],
+  queryFn: async () =>
+    unwrap(await supabase.from("poles").select("*").order("sort_order", { ascending: true })),
+});
+
 export const membersQuery = queryOptions({
   queryKey: ["members"],
   queryFn: async () => {
-    const [members, links] = await Promise.all([supabase.from("members").select("*").order("full_name"), supabase.from("member_poles").select("member_id, pole_id, is_referent")]);
-    return { members: unwrap(members), links: unwrap(links) };
+    const [members, links] = await Promise.all([
+      supabase.from("members").select("*").order("full_name"),
+      supabase.from("member_poles").select("member_id, pole_id, is_referent"),
+    ]);
+    return {
+      members: unwrap(members),
+      links: unwrap(links),
+    };
   },
 });
 
-export type ProgramWithDetails = Program & { assignments: Array<{ id: string; pole_id: string; tasks: string | null; memberIds: string[] }>; responses: Array<{ member_id: string; status: ResponseStatus; reason: string | null }> };
+export type ProgramWithDetails = Program & {
+  assignments: Array<{
+    id: string;
+    pole_id: string;
+    tasks: string | null;
+    memberIds: string[];
+  }>;
+  responses: Array<{ member_id: string; status: ResponseStatus; reason: string | null }>;
+};
+
 export const programsQuery = queryOptions({
   queryKey: ["programs"],
   queryFn: async (): Promise<ProgramWithDetails[]> => {
@@ -37,42 +57,303 @@ export const programsQuery = queryOptions({
       supabase.from("program_assignment_members").select("assignment_id, member_id"),
       supabase.from("program_member_responses").select("program_id, member_id, status, reason"),
     ]);
-    const rows = unwrap(programs); const asg = unwrap(assignments); const asgMembers = unwrap(assignMembers); const resp = unwrap(responses);
-    return rows.map((p) => ({ ...p, assignments: asg.filter((a) => a.program_id === p.id).map((a) => ({ id: a.id, pole_id: a.pole_id, tasks: a.tasks, memberIds: asgMembers.filter((m) => m.assignment_id === a.id).map((m) => m.member_id) })), responses: resp.filter((r) => r.program_id === p.id).map((r) => ({ member_id: r.member_id, status: r.status, reason: r.reason })) }));
+
+    const rows = unwrap(programs);
+    const asg = unwrap(assignments);
+    const asgMembers = unwrap(assignMembers);
+    const resp = unwrap(responses);
+
+    return rows.map((p) => ({
+      ...p,
+      assignments: asg
+        .filter((a) => a.program_id === p.id)
+        .map((a) => ({
+          id: a.id,
+          pole_id: a.pole_id,
+          tasks: a.tasks,
+          memberIds: asgMembers.filter((m) => m.assignment_id === a.id).map((m) => m.member_id),
+        })),
+      responses: resp
+        .filter((r) => r.program_id === p.id)
+        .map((r) => ({ member_id: r.member_id, status: r.status, reason: r.reason })),
+    }));
   },
 });
 
-export const solicitationsQuery = queryOptions({ queryKey: ["solicitations"], queryFn: async () => unwrap(await supabase.from("solicitations").select("*").eq("deleted", false).order("event_date", { ascending: true })) });
-export const auditQuery = queryOptions({ queryKey: ["audit-log"], queryFn: async () => unwrap(await supabase.from("audit_log").select("*").order("occurred_at", { ascending: false }).limit(100)) });
-export const settingsQuery = queryOptions({ queryKey: ["app-settings"], queryFn: async () => { const { data, error } = await supabase.from("app_settings").select("*").eq("id", "main").maybeSingle(); if (error) throw new Error(error.message); return data; } });
+export const solicitationsQuery = queryOptions({
+  queryKey: ["solicitations"],
+  queryFn: async () =>
+    unwrap(
+      await supabase
+        .from("solicitations")
+        .select("*")
+        .eq("deleted", false)
+        .order("event_date", { ascending: true }),
+    ),
+});
 
-export async function logAction(entry: { action: string; detail?: string; entity?: string; entityId?: string; actorName?: string | null | undefined }) {
+export const auditQuery = queryOptions({
+  queryKey: ["audit-log"],
+  queryFn: async () =>
+    unwrap(
+      await supabase.from("audit_log").select("*").order("occurred_at", { ascending: false }).limit(100),
+    ),
+});
+
+export const settingsQuery = queryOptions({
+  queryKey: ["app-settings"],
+  queryFn: async () => {
+    const { data, error } = await supabase.from("app_settings").select("*").eq("id", "main").maybeSingle();
+    if (error) throw new Error(error.message);
+    return data;
+  },
+});
+
+export async function logAction(entry: {
+  action: string;
+  detail?: string;
+  entity?: string;
+  entityId?: string;
+  actorName?: string | null | undefined;
+}) {
   const id = `a${Date.now()}${Math.random().toString(36).slice(2, 7)}`;
-  await supabase.from("audit_log").insert({ id, action: entry.action, detail: entry.detail ?? null, entity: entry.entity ?? null, entity_id: entry.entityId ?? null, actor_name: entry.actorName ?? null });
+  await supabase.from("audit_log").insert({
+    id,
+    action: entry.action,
+    detail: entry.detail ?? null,
+    entity: entry.entity ?? null,
+    entity_id: entry.entityId ?? null,
+    actor_name: entry.actorName ?? null,
+  });
 }
 
-export const RESPONSE_LABEL: Record<ResponseStatus, string> = { available: "Disponible", partial: "Partiel", unavailable: "Indisponible", pending: "En attente" };
-export const STATUS_LABEL: Record<string, string> = { unconfirmed: "Non confirmé", confirmed: "Confirmé", postponed: "Reporté", cancelled: "Annulé", draft: "Brouillon", pending: "En attente", done: "Terminé", accepted: "Acceptée", refused: "Refusée" };
-export const RECURRENCE_LABEL: Record<string, string> = { ponctuel: "Ponctuel", weekly: "Hebdomadaire", hebdo: "Hebdomadaire", hebdomadaire: "Hebdomadaire", biweekly: "Une semaine sur 2", "1_semaine_sur_2": "Une semaine sur 2", bimonthly: "Bimensuel", bimensuel: "Bimensuel", monthly: "Mensuel", mensuel: "Mensuel", quarterly: "Trimestriel", trimestriel: "Trimestriel", yearly: "Annuel", annuel: "Annuel" };
-export function recurrenceLabel(value: string | null | undefined) { if (!value) return "Ponctuel"; return RECURRENCE_LABEL[value.toLowerCase()] ?? value; }
+export const RESPONSE_LABEL: Record<ResponseStatus, string> = {
+  available: "Disponible",
+  partial: "Partiel",
+  unavailable: "Indisponible",
+  pending: "En attente",
+};
 
-export function formatDate(value: string | null | undefined) { if (!value) return "Date à définir"; return new Date(`${value}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "long", year: "numeric" }); }
-export function formatDateTime(value: string | null | undefined) { if (!value) return "—"; return new Date(value).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }); }
+export const STATUS_LABEL: Record<string, string> = {
+  unconfirmed: "Non confirmé",
+  confirmed: "Confirmé",
+  postponed: "Reporté",
+  cancelled: "Annulé",
+  draft: "Brouillon",
+  pending: "En attente",
+  done: "Terminé",
+  accepted: "Acceptée",
+  refused: "Refusée",
+};
+
+export const RECURRENCE_LABEL: Record<string, string> = {
+  ponctuel: "Ponctuel",
+  weekly: "Hebdomadaire",
+  hebdo: "Hebdomadaire",
+  hebdomadaire: "Hebdomadaire",
+  biweekly: "Une semaine sur 2",
+  "1_semaine_sur_2": "Une semaine sur 2",
+  bimonthly: "Bimensuel",
+  bimensuel: "Bimensuel",
+  monthly: "Mensuel",
+  mensuel: "Mensuel",
+  quarterly: "Trimestriel",
+  trimestriel: "Trimestriel",
+  yearly: "Annuel",
+  annuel: "Annuel",
+};
+
+export function recurrenceLabel(value: string | null | undefined) {
+  if (!value) return "Ponctuel";
+  return RECURRENCE_LABEL[value.toLowerCase()] ?? value;
+}
+
+export function formatDate(value: string | null | undefined) {
+  if (!value) return "Date à définir";
+  return new Date(`${value}T12:00:00`).toLocaleDateString("fr-FR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+export function formatDateTime(value: string | null | undefined) {
+  if (!value) return "—";
+  return new Date(value).toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export type Task = Tables["tasks"]["Row"];
-export const availabilityQuery = queryOptions({ queryKey: ["member-availability"], queryFn: async () => unwrap(await supabase.from("member_availability").select("id, member_id, starts_at, ends_at, note, status, decided_at, validated_starts_at, validated_ends_at, decision_note").order("starts_at")) });
-export const tasksQuery = queryOptions({ queryKey: ["tasks"], queryFn: async () => unwrap(await supabase.from("tasks").select("*").order("due_date", { ascending: true })) });
-export const TASK_STATUS_LABEL: Record<string, string> = { todo: "À faire", doing: "En cours", done: "Terminée" };
-export const TASK_PRIORITY_LABEL: Record<string, string> = { basse: "Basse", normale: "Normale", haute: "Haute" };
+
+export const availabilityQuery = queryOptions({
+  queryKey: ["member-availability"],
+  queryFn: async () =>
+    unwrap(
+      await supabase
+        .from("member_availability")
+        .select("id, member_id, starts_at, ends_at, note, status, decided_at, validated_starts_at, validated_ends_at, decision_note")
+        .order("starts_at"),
+    ),
+});
+
+export const tasksQuery = queryOptions({
+  queryKey: ["tasks"],
+  queryFn: async () =>
+    unwrap(await supabase.from("tasks").select("*").order("due_date", { ascending: true })),
+});
+
+export const TASK_STATUS_LABEL: Record<string, string> = {
+  todo: "À faire",
+  doing: "En cours",
+  done: "Terminée",
+};
+
+export const TASK_PRIORITY_LABEL: Record<string, string> = {
+  basse: "Basse",
+  normale: "Normale",
+  haute: "Haute",
+};
 
 export type ProgramModel = Tables["program_models"]["Row"];
 export type ProgramDebrief = Tables["program_debriefs"]["Row"];
 export type EvaluationRow = Tables["evaluations"]["Row"];
-export const programModelsQuery = queryOptions({ queryKey: ["program-models"], queryFn: async () => unwrap(await supabase.from("program_models").select("*").order("name")) });
 
-export const programDocumentsQuery = queryOptions({ queryKey: ["program-documents"], queryFn: async () => unwrap(await supabase.from("program_documents").select("*").order("created_at", { ascending: false })) });
-export const internalNotesQuery = queryOptions({ queryKey: ["internal-notes"], queryFn: async () => unwrap(await supabase.from("internal_notes").select("*").order("created_at", { ascending: false })) });
-export const attendanceQuery = queryOptions({ queryKey: ["attendance"], queryFn: async () => unwrap(await supabase.from("program_attendance").select("*").order("created_at", { ascending: false })) });
-export const timelineQuery = (entity: string, entityId: string) => queryOptions({ queryKey: ["timeline", entity, entityId], queryFn: async () => unwrap(await supabase.from("audit_log").select("*").eq("entity", entity).eq("entity_id", entityId).order("occurred_at", { ascending: false })) });
+export const programModelsQuery = queryOptions({
+  queryKey: ["program-models"],
+  queryFn: async () => unwrap(await supabase.from("program_models").select("*").order("name")),
+});
 
-export const PRESENCE_LABEL: Record<string, string> = { present: "Présent", absent: "Absent", late: "En retard", excused: "Excusé" };
+export const debriefsQuery = queryOptions({
+  queryKey: ["program-debriefs"],
+  queryFn: async () =>
+    unwrap(
+      await supabase.from("program_debriefs").select("*").order("created_at", { ascending: false }),
+    ),
+});
+
+export const evaluationsQuery = queryOptions({
+  queryKey: ["evaluations"],
+  queryFn: async () =>
+    unwrap(await supabase.from("evaluations").select("*").order("created_at", { ascending: false })),
+});
+
+export const AVAILABILITY_STATUS_LABEL: Record<string, string> = {
+  pending: "En attente de validation",
+  validated: "Validée",
+  refused: "Refusée",
+};
+
+export type Attendance = Tables["program_attendance"]["Row"];
+export type ProgramDocument = Tables["program_documents"]["Row"];
+export type InternalNote = Tables["internal_notes"]["Row"];
+export type NotificationPreference = Tables["notification_preferences"]["Row"];
+
+export const PRESENCE_LABEL: Record<string, string> = {
+  present: "Présent",
+  absent: "Absent",
+  retard: "Retard",
+  partiel: "Présence partielle",
+  remplace: "Remplacé",
+  renfort: "Renfort",
+};
+
+export const COMPLETION_LABEL: Record<string, string> = {
+  total: "Réalisé totalement",
+  partiel: "Réalisé partiellement",
+  non: "Non réalisé",
+};
+
+export const INCIDENT_TYPES = [
+  "Technique",
+  "Organisation",
+  "Matériel",
+  "Retard-absence",
+  "Communication",
+  "Autre",
+] as const;
+
+export const NOTIFICATION_EVENTS: Array<{ key: string; label: string }> = [
+  { key: "programme_affectation", label: "Je suis affecté à un programme" },
+  { key: "programme_rappel", label: "Rappel avant un service" },
+  { key: "programme_modification", label: "Un programme qui me concerne change" },
+  { key: "reponse_recue", label: "Une réponse est reçue sur mon programme" },
+  { key: "sollicitation", label: "Nouvelle sollicitation ponctuelle" },
+  { key: "indisponibilite", label: "Indisponibilité à valider / décidée" },
+  { key: "evaluation", label: "Évaluation à rédiger, à valider ou validée" },
+  { key: "post_service", label: "Post-service à compléter" },
+  { key: "tache", label: "Tâche qui m'est assignée" },
+];
+
+export const attendanceQuery = queryOptions({
+  queryKey: ["program-attendance"],
+  queryFn: async () => unwrap(await supabase.from("program_attendance").select("*")),
+});
+
+export const programDocumentsQuery = queryOptions({
+  queryKey: ["program-documents"],
+  queryFn: async () =>
+    unwrap(await supabase.from("program_documents").select("*").order("created_at")),
+});
+
+export const internalNotesQuery = queryOptions({
+  queryKey: ["internal-notes"],
+  queryFn: async () =>
+    unwrap(await supabase.from("internal_notes").select("*").order("created_at", { ascending: false })),
+});
+
+export function notificationPreferencesQuery(userId: string | undefined) {
+  return queryOptions({
+    queryKey: ["notification-preferences", userId],
+    enabled: !!userId,
+    queryFn: async () =>
+      unwrap(await supabase.from("notification_preferences").select("*").eq("user_id", userId!)),
+  });
+}
+
+export function shortcutsQuery(userId: string | undefined) {
+  return queryOptions({
+    queryKey: ["user-shortcuts", userId],
+    enabled: !!userId,
+    queryFn: async () =>
+      unwrap(
+        await supabase.from("user_shortcuts").select("*").eq("user_id", userId!).order("sort_order"),
+      ),
+  });
+}
+
+export function hiddenItemsQuery(userId: string | undefined) {
+  return queryOptions({
+    queryKey: ["user-hidden-items", userId],
+    enabled: !!userId,
+    queryFn: async () =>
+      unwrap(await supabase.from("user_hidden_items").select("*").eq("user_id", userId!)),
+  });
+}
+
+export function isProgramFinished(p: { start_date: string | null; end_date: string | null; end_time: string | null }) {
+  const day = p.end_date ?? p.start_date;
+  if (!day) return false;
+  const end = new Date(`${day}T${p.end_time && /^\d{2}:\d{2}/.test(p.end_time) ? p.end_time : "23:59"}:00`);
+  return end.getTime() < Date.now();
+}
+
+export function timelineQuery(entity: string, entityId: string) {
+  return queryOptions({
+    queryKey: ["timeline", entity, entityId],
+    queryFn: async () =>
+      unwrap(
+        await supabase
+          .from("audit_log")
+          .select("*")
+          .eq("entity", entity)
+          .eq("entity_id", entityId)
+          .order("occurred_at", { ascending: false }),
+      ),
+  });
+}
