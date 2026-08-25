@@ -1,11 +1,11 @@
-import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { IccHeader } from "@/components/IccHeader";
 
 /**
  * Coquille unique de l'application : en-tête violet ICC, contenu centré,
- * titre de page violet et bouton « ← Retour », comme dans l'application d'origine.
+ * titre de page violet et bouton « ← Retour ».
+ * Le retour suit l'historique réel de navigation au lieu de renvoyer systématiquement à l'accueil.
  */
 export function AppShell({
   title,
@@ -18,6 +18,15 @@ export function AppShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  function goBack() {
+    if (typeof window === "undefined") return;
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    window.location.assign(`${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, "/tableau-de-bord")}`);
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <IccHeader />
@@ -29,9 +38,9 @@ export function AppShell({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {actions}
-            <Link to="/tableau-de-bord" className="text-xs font-bold text-icc-violet">
+            <button type="button" onClick={goBack} className="text-xs font-bold text-icc-violet hover:underline">
               ← Retour
-            </Link>
+            </button>
           </div>
         </div>
         {children}
