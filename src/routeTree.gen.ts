@@ -20,6 +20,7 @@ import { Route as AuthenticatedDisponibilitesRouteImport } from './routes/_authe
 import { Route as AuthenticatedEvaluationsRouteImport } from './routes/_authenticated/evaluations'
 import { Route as AuthenticatedExportsRouteImport } from './routes/_authenticated/exports'
 import { Route as AuthenticatedHistoriqueRouteImport } from './routes/_authenticated/historique'
+import { Route as AuthenticatedMesServicesRouteImport } from './routes/_authenticated/mes-services'
 import { Route as AuthenticatedModelesRouteImport } from './routes/_authenticated/modeles'
 import { Route as AuthenticatedMonPlanningRouteImport } from './routes/_authenticated/mon-planning'
 import { Route as AuthenticatedMonProfilRouteImport } from './routes/_authenticated/mon-profil'
@@ -93,6 +94,12 @@ const AuthenticatedHistoriqueRoute = AuthenticatedHistoriqueRouteImport.update({
   path: '/historique',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMesServicesRoute =
+  AuthenticatedMesServicesRouteImport.update({
+    id: '/mes-services',
+    path: '/mes-services',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedModelesRoute = AuthenticatedModelesRouteImport.update({
   id: '/modeles',
   path: '/modeles',
@@ -186,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/evaluations': typeof AuthenticatedEvaluationsRoute
   '/exports': typeof AuthenticatedExportsRoute
   '/historique': typeof AuthenticatedHistoriqueRoute
+  '/mes-services': typeof AuthenticatedMesServicesRoute
   '/modeles': typeof AuthenticatedModelesRoute
   '/mon-planning': typeof AuthenticatedMonPlanningRoute
   '/mon-profil': typeof AuthenticatedMonProfilRoute
@@ -213,6 +221,7 @@ export interface FileRoutesByTo {
   '/evaluations': typeof AuthenticatedEvaluationsRoute
   '/exports': typeof AuthenticatedExportsRoute
   '/historique': typeof AuthenticatedHistoriqueRoute
+  '/mes-services': typeof AuthenticatedMesServicesRoute
   '/modeles': typeof AuthenticatedModelesRoute
   '/mon-planning': typeof AuthenticatedMonPlanningRoute
   '/mon-profil': typeof AuthenticatedMonProfilRoute
@@ -242,6 +251,7 @@ export interface FileRoutesById {
   '/_authenticated/evaluations': typeof AuthenticatedEvaluationsRoute
   '/_authenticated/exports': typeof AuthenticatedExportsRoute
   '/_authenticated/historique': typeof AuthenticatedHistoriqueRoute
+  '/_authenticated/mes-services': typeof AuthenticatedMesServicesRoute
   '/_authenticated/modeles': typeof AuthenticatedModelesRoute
   '/_authenticated/mon-planning': typeof AuthenticatedMonPlanningRoute
   '/_authenticated/mon-profil': typeof AuthenticatedMonProfilRoute
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/evaluations'
     | '/exports'
     | '/historique'
+    | '/mes-services'
     | '/modeles'
     | '/mon-planning'
     | '/mon-profil'
@@ -298,6 +309,7 @@ export interface FileRouteTypes {
     | '/evaluations'
     | '/exports'
     | '/historique'
+    | '/mes-services'
     | '/modeles'
     | '/mon-planning'
     | '/mon-profil'
@@ -326,6 +338,7 @@ export interface FileRouteTypes {
     | '/_authenticated/evaluations'
     | '/_authenticated/exports'
     | '/_authenticated/historique'
+    | '/_authenticated/mes-services'
     | '/_authenticated/modeles'
     | '/_authenticated/mon-planning'
     | '/_authenticated/mon-profil'
@@ -426,6 +439,13 @@ declare module '@tanstack/react-router' {
       path: '/historique'
       fullPath: '/historique'
       preLoaderRoute: typeof AuthenticatedHistoriqueRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/mes-services': {
+      id: '/_authenticated/mes-services'
+      path: '/mes-services'
+      fullPath: '/mes-services'
+      preLoaderRoute: typeof AuthenticatedMesServicesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/modeles': {
@@ -545,6 +565,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEvaluationsRoute: typeof AuthenticatedEvaluationsRoute
   AuthenticatedExportsRoute: typeof AuthenticatedExportsRoute
   AuthenticatedHistoriqueRoute: typeof AuthenticatedHistoriqueRoute
+  AuthenticatedMesServicesRoute: typeof AuthenticatedMesServicesRoute
   AuthenticatedModelesRoute: typeof AuthenticatedModelesRoute
   AuthenticatedMonPlanningRoute: typeof AuthenticatedMonPlanningRoute
   AuthenticatedMonProfilRoute: typeof AuthenticatedMonProfilRoute
@@ -571,6 +592,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEvaluationsRoute: AuthenticatedEvaluationsRoute,
   AuthenticatedExportsRoute: AuthenticatedExportsRoute,
   AuthenticatedHistoriqueRoute: AuthenticatedHistoriqueRoute,
+  AuthenticatedMesServicesRoute: AuthenticatedMesServicesRoute,
   AuthenticatedModelesRoute: AuthenticatedModelesRoute,
   AuthenticatedMonPlanningRoute: AuthenticatedMonPlanningRoute,
   AuthenticatedMonProfilRoute: AuthenticatedMonProfilRoute,
