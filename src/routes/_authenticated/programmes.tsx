@@ -3,7 +3,21 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { AppShell, EmptyState } from "@/components/AppShell";
-import { formatDate, membersQuery, polesQuery, programsQuery, recurrenceLabel, STATUS_LABEL } from "@/lib/icc";
+import { formatDate, membersQuery, polesQuery, programsQuery, STATUS_LABEL } from "@/lib/icc";
+import {
+  canonicalProgramFormat,
+  canonicalProgramImportance,
+  canonicalProgramRecurrence,
+  canonicalProgramType,
+  PROGRAM_FORMAT_OPTIONS,
+  PROGRAM_IMPORTANCE_OPTIONS,
+  PROGRAM_RECURRENCE_OPTIONS,
+  PROGRAM_TYPE_OPTIONS,
+  programFormatLabel,
+  programImportanceLabel,
+  programRecurrenceLabel,
+  programTypeLabel,
+} from "@/lib/programLabels";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,9 +49,11 @@ function Programmes() {
   const filtered = (programs.data ?? []).filter((p) => {
     const q = search.trim().toLowerCase();
     return (!q || [p.title, p.location, p.description].some((v) => v?.toLowerCase().includes(q))) &&
-      (status === "all" || p.status === status) && (type === "all" || p.program_type === type) &&
-      (format === "all" || p.format === format) && (recurrence === "all" || (p.recurrence ?? "ponctuel") === recurrence) &&
-      (importance === "all" || p.importance === importance);
+      (status === "all" || p.status === status) &&
+      (type === "all" || canonicalProgramType(p.program_type) === type) &&
+      (format === "all" || canonicalProgramFormat(p.format) === format) &&
+      (recurrence === "all" || canonicalProgramRecurrence(p.recurrence) === recurrence) &&
+      (importance === "all" || canonicalProgramImportance(p.importance) === importance);
   });
 
   if (programs.isLoading) return <AppShell title="Programmes"><Skeleton className="h-40 rounded-xl" /></AppShell>;
@@ -51,10 +67,10 @@ function Programmes() {
       <div className="mb-5 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
         <Input placeholder="Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} />
         <Filter value={status} onChange={setStatus} placeholder="Statut" items={[["all","Tous les statuts"],["confirmed","Confirmé"],["unconfirmed","Non confirmé"],["postponed","Reporté"],["cancelled","Annulé"]]} />
-        <Filter value={type} onChange={setType} placeholder="Type" items={[["all","Tous les types"],["Église","Église"],["Corporate","Corporate"],["Autre église-Invitation","Autre église-Invitation"],["Interne Com","Interne Com"]]} />
-        <Filter value={format} onChange={setFormat} placeholder="Format" items={[["all","Tous les formats"],["Présentiel","Présentiel"],["En ligne","En ligne"],["Présentiel + En ligne","Présentiel + En ligne"],["Déplacement","Déplacement"],["Déplacement + Connecté","Déplacement + Connecté"]]} />
-        <Filter value={recurrence} onChange={setRecurrence} placeholder="Récurrence" items={[["all","Toutes récurrences"],["ponctuel","Ponctuel"],["hebdo","Hebdomadaire"],["1_semaine_sur_2","Une semaine sur 2"],["bimensuel","Bimensuel"],["mensuel","Mensuel"],["trimestriel","Trimestriel"],["annuel","Annuel"]]} />
-        <Filter value={importance} onChange={setImportance} placeholder="Importance" items={[["all","Toutes importances"],["critical","Critique"],["important","Importante"],["normal","Normale"],["low","Faible"]]} />
+        <Filter value={type} onChange={setType} placeholder="Type" items={[["all","Tous les types"], ...PROGRAM_TYPE_OPTIONS.map(([v,l]) => [v,l])]} />
+        <Filter value={format} onChange={setFormat} placeholder="Format" items={[["all","Tous les formats"], ...PROGRAM_FORMAT_OPTIONS.map(([v,l]) => [v,l])]} />
+        <Filter value={recurrence} onChange={setRecurrence} placeholder="Récurrence" items={[["all","Toutes récurrences"], ...PROGRAM_RECURRENCE_OPTIONS.map(([v,l]) => [v,l])]} />
+        <Filter value={importance} onChange={setImportance} placeholder="Importance" items={[["all","Toutes importances"], ...PROGRAM_IMPORTANCE_OPTIONS.map(([v,l]) => [v,l])]} />
       </div>
 
       {filtered.length === 0 ? <EmptyState title="Aucun programme" /> : (
@@ -65,10 +81,10 @@ function Programmes() {
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex flex-wrap gap-2 text-xs font-bold">
                     <Badge className={statusClass[program.status] ?? ""}>{STATUS_LABEL[program.status] ?? program.status}</Badge>
-                    {program.program_type ? <Badge variant="outline">{program.program_type}</Badge> : null}
-                    {program.format ? <Badge variant="outline">{program.format}</Badge> : null}
-                    {program.importance ? <Badge variant="secondary">{importanceLabel(program.importance)}</Badge> : null}
-                    <Badge variant="outline">{recurrenceLabel(program.recurrence)}</Badge>
+                    {program.program_type ? <Badge variant="outline">{programTypeLabel(program.program_type)}</Badge> : null}
+                    {program.format ? <Badge variant="outline">{programFormatLabel(program.format)}</Badge> : null}
+                    {program.importance ? <Badge variant="secondary">{programImportanceLabel(program.importance)}</Badge> : null}
+                    <Badge variant="outline">{programRecurrenceLabel(program.recurrence)}</Badge>
                   </div>
                   <Link to="/programme/$id" params={{ id: program.id }} className="text-lg font-black text-icc-violet hover:underline">{program.title}</Link>
                   <p className="mt-1 text-sm font-semibold">📅 {formatDate(program.start_date)}{program.start_time ? ` · ${program.start_time.slice(0,5)}` : ""}</p>
@@ -87,5 +103,4 @@ function Programmes() {
     </AppShell>
   );
 }
-function Filter({ value, onChange, placeholder, items }: { value: string; onChange: (v:string)=>void; placeholder:string; items:string[][] }) { return <Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue placeholder={placeholder}/></SelectTrigger><SelectContent>{items.map(([v,l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select>; }
-function importanceLabel(v:string) { return ({ critical:"Critique", important:"Importante", normal:"Normale", low:"Faible", critique:"Critique", haute:"Importante", normale:"Normale", faible:"Faible" } as Record<string,string>)[v] ?? v; }
+function Filter({ value, onChange, placeholder, items }: { value: string; onChange: (v:string)=>void; placeholder:string; items:readonly (readonly [string,string])[] | string[][] }) { return <Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue placeholder={placeholder}/></SelectTrigger><SelectContent>{items.map(([v,l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select>; }
