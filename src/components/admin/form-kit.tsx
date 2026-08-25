@@ -24,6 +24,11 @@ export function Field({
   );
 }
 
-export function newId(prefix: string) {
-  return `${prefix}${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+/**
+ * Identifiant compatible avec les colonnes UUID Supabase.
+ * Le préfixe est conservé dans la signature pour ne pas casser les appels existants,
+ * mais l'identifiant retourné est toujours un UUID standard.
+ */
+export function newId(_prefix: string) {
+  return crypto.randomUUID();
 }
