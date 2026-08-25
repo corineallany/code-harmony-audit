@@ -2,12 +2,10 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
-import { AppShell, EmptyState } from "@/components/AppShell";
-import { ConflictsPanel } from "@/components/ConflictsPanel";
+import { AppShell } from "@/components/AppShell";
 import { useCurrentRole } from "@/hooks/useAuth";
 import { downloadCsv, exportStamp, toCsv } from "@/lib/exports";
-import { polesQuery, programsQuery, solicitationsQuery, STATUS_LABEL } from "@/lib/icc";
-import { Badge } from "@/components/ui/badge";
+import { polesQuery, programsQuery } from "@/lib/icc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,7 +16,7 @@ export const Route = createFileRoute("/_authenticated/planning")({
       { title: "Planning — COM ICC Le Mans" },
       {
         name: "description",
-        content: "Planning calendrier unifié du pôle Communication : programmes, sollicitations, filtres et conflits.",
+        content: "Calendrier des programmes du pôle Communication, avec vues Mois/Semaine et filtres métier.",
       },
     ],
   }),
@@ -28,15 +26,12 @@ export const Route = createFileRoute("/_authenticated/planning")({
 type ViewMode = "month" | "week";
 type Entry = {
   id: string;
-  sourceId: string;
-  kind: "program" | "solicitation";
   title: string;
   date: string | null;
   endDate: string | null;
   startTime: string | null;
   endTime: string | null;
   status: string;
-  detail: string;
   programType: string | null;
   format: string | null;
   recurrence: string | null;
@@ -45,6 +40,56 @@ type Entry = {
 };
 
 const DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+
+// Valeurs métier historiques validées dans la V97 / THE Consolidation.
+const STATUS_OPTIONS = [
+  ["confirmed", "Confirmé"],
+  ["unconfirmed", "Non confirmé"],
+  ["postponed", "Reporté"],
+  ["cancelled", "Annulé"],
+] as const;
+
+const TYPE_OPTIONS = [
+  ["eglise", "Église"],
+  ["corporate", "Corporate"],
+  ["invite", "Autre église / Invitation"],
+  ["com", "Interne Com"],
+] as const;
+
+const FORMAT_OPTIONS = [
+  ["presentiel", "Présentiel"],
+  ["online", "En ligne"],
+  ["both", "Présentiel + En ligne"],
+  ["deplacement", "Déplacement"],
+  ["deplacement_connecte", "Déplacement + Connecté"],
+] as const;
+
+const RECURRENCE_OPTIONS = [
+  ["ponctuel", "Ponctuel"],
+  ["hebdo", "Hebdomadaire"],
+  ["bihebdo", "Une semaine sur 2"],
+  ["bimensuel", "Bimensuel"],
+  ["mensuel", "Mensuel"],
+  ["trimestriel", "Trimestriel"],
+  ["annuel", "Annuel"],
+] as const;
+
+const IMMINENCE_OPTIONS = [
+  ["urgent", "Urgent · 48 h"],
+  ["soon", "À venir · 7 jours"],
+  ["month", "À venir · 30 jours"],
+  ["later", "Plus tard"],
+  ["past", "Passé"],
+] as const;
+
+const IMPORTANCE_OPTIONS = [
+  ["critical", "Critique"],
+  ["high", "Importante"],
+  ["normal", "Normale"],
+  ["low", "Faible"],
+] as const;
+
+const STATUS_LABEL = Object.fromEntries(STATUS_OPTIONS) as Record<string, string>;
 
 function isoDate(date: Date) {
   const y = date.getFullYear();
@@ -73,9 +118,25 @@ function monthGrid(anchor: Date) {
   return Array.from({ length: 42 }, (_, i) => addDays(start, i));
 }
 
+function matchesImminence(dateValue: string | null, filter: string) {
+  if (filter === "all") return true;
+  if (!dateValue) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(`${dateValue}T12:00:00`);
+  const diffDays = Math.ceil((target.getTime() - today.getTime()) / 86_400_000);
+
+  if (filter === "past") return diffDays < 0;
+  if (filter === "urgent") return diffDays >= 0 && diffDays <= 2;
+  if (filter === "soon") return diffDays >= 0 && diffDays <= 7;
+  if (filter === "month") return diffDays >= 0 && diffDays <= 30;
+  if (filter === "later") return diffDays > 30;
+  return true;
+}
+
 function Planning() {
   const programs = useQuery(programsQuery);
-  const solicitations = useQuery(solicitationsQuery);
   const poles = useQuery(polesQuery);
   const { isStaff } = useCurrentRole();
 
@@ -85,70 +146,42 @@ function Planning() {
   const [programType, setProgramType] = useState("all");
   const [format, setFormat] = useState("all");
   const [recurrence, setRecurrence] = useState("all");
+  const [imminence, setImminence] = useState("all");
   const [importance, setImportance] = useState("all");
-  const [pole, setPole] = useState("all");
 
   const poleName = useMemo(() => new Map((poles.data ?? []).map((p) => [p.id, p.name])), [poles.data]);
 
-  const allEntries = useMemo<Entry[]>(() => {
-    const rows: Entry[] = [
-      ...(programs.data ?? []).map((p) => ({
-        id: `p-${p.id}`,
-        sourceId: p.id,
-        kind: "program" as const,
+  const allEntries = useMemo<Entry[]>(() =>
+    (programs.data ?? [])
+      .map((p) => ({
+        id: p.id,
         title: p.title,
         date: p.start_date,
         endDate: p.end_date,
         startTime: p.start_time,
         endTime: p.end_time,
         status: p.status,
-        detail: p.assignments.map((a) => poleName.get(a.pole_id)).filter(Boolean).join(" · ") || "Aucun pôle affecté",
         programType: p.program_type,
         format: p.format,
         recurrence: p.recurrence,
         importance: p.importance,
         poleIds: p.assignments.map((a) => a.pole_id),
-      })),
-      ...(solicitations.data ?? []).map((s) => ({
-        id: `s-${s.id}`,
-        sourceId: s.id,
-        kind: "solicitation" as const,
-        title: s.event_name ?? "Sollicitation",
-        date: s.event_date,
-        endDate: s.event_date,
-        startTime: null,
-        endTime: null,
-        status: s.status,
-        detail: s.requester ?? "Demandeur inconnu",
-        programType: null,
-        format: null,
-        recurrence: null,
-        importance: null,
-        poleIds: s.target_pole_id ? [s.target_pole_id] : [],
-      })),
-    ];
-    return rows.sort((a, b) => `${a.date ?? "9999"}${a.startTime ?? ""}`.localeCompare(`${b.date ?? "9999"}${b.startTime ?? ""}`));
-  }, [programs.data, solicitations.data, poleName]);
+      }))
+      .sort((a, b) => `${a.date ?? "9999"}${a.startTime ?? ""}`.localeCompare(`${b.date ?? "9999"}${b.startTime ?? ""}`)),
+  [programs.data]);
 
   const entries = useMemo(
-    () =>
-      allEntries.filter((entry) => {
-        if (status !== "all" && entry.status !== status) return false;
-        if (programType !== "all" && entry.programType !== programType) return false;
-        if (format !== "all" && entry.format !== format) return false;
-        if (recurrence !== "all" && entry.recurrence !== recurrence) return false;
-        if (importance !== "all" && entry.importance !== importance) return false;
-        if (pole !== "all" && !entry.poleIds.includes(pole)) return false;
-        return true;
-      }),
-    [allEntries, status, programType, format, recurrence, importance, pole],
+    () => allEntries.filter((entry) => {
+      if (status !== "all" && entry.status !== status) return false;
+      if (programType !== "all" && entry.programType !== programType) return false;
+      if (format !== "all" && entry.format !== format) return false;
+      if (recurrence !== "all" && entry.recurrence !== recurrence) return false;
+      if (!matchesImminence(entry.date, imminence)) return false;
+      if (importance !== "all" && entry.importance !== importance) return false;
+      return true;
+    }),
+    [allEntries, status, programType, format, recurrence, imminence, importance],
   );
-
-  const statusOptions = useMemo(() => [...new Set(allEntries.map((e) => e.status).filter(Boolean))], [allEntries]);
-  const typeOptions = useMemo(() => [...new Set(allEntries.map((e) => e.programType).filter(Boolean))] as string[], [allEntries]);
-  const formatOptions = useMemo(() => [...new Set(allEntries.map((e) => e.format).filter(Boolean))] as string[], [allEntries]);
-  const recurrenceOptions = useMemo(() => [...new Set(allEntries.map((e) => e.recurrence).filter(Boolean))] as string[], [allEntries]);
-  const importanceOptions = useMemo(() => [...new Set(allEntries.map((e) => e.importance).filter(Boolean))] as string[], [allEntries]);
 
   const visibleDates = useMemo(() => {
     if (view === "week") {
@@ -171,6 +204,15 @@ function Planning() {
     });
   }
 
+  function resetFilters() {
+    setStatus("all");
+    setProgramType("all");
+    setFormat("all");
+    setRecurrence("all");
+    setImminence("all");
+    setImportance("all");
+  }
+
   function exportPlanning() {
     const rows = entries.filter((e) => e.date);
     downloadCsv(
@@ -178,17 +220,18 @@ function Planning() {
       toCsv(rows, [
         { key: "date", label: "Date", value: (e) => e.date },
         { key: "heure", label: "Horaire", value: (e) => [e.startTime, e.endTime].filter(Boolean).join(" - ") },
-        { key: "type", label: "Nature", value: (e) => (e.kind === "program" ? "Programme" : "Sollicitation") },
-        { key: "titre", label: "Titre", value: (e) => e.title },
+        { key: "titre", label: "Programme", value: (e) => e.title },
         { key: "statut", label: "Statut", value: (e) => STATUS_LABEL[e.status] ?? e.status },
-        { key: "pole", label: "Pôle(s)", value: (e) => e.poleIds.map((id) => poleName.get(id) ?? id).join(" · ") },
-        { key: "format", label: "Format", value: (e) => e.format },
-        { key: "importance", label: "Importance", value: (e) => e.importance },
+        { key: "type", label: "Type", value: (e) => TYPE_OPTIONS.find(([v]) => v === e.programType)?.[1] ?? e.programType },
+        { key: "format", label: "Format", value: (e) => FORMAT_OPTIONS.find(([v]) => v === e.format)?.[1] ?? e.format },
+        { key: "recurrence", label: "Récurrence", value: (e) => RECURRENCE_OPTIONS.find(([v]) => v === e.recurrence)?.[1] ?? e.recurrence },
+        { key: "importance", label: "Importance", value: (e) => IMPORTANCE_OPTIONS.find(([v]) => v === e.importance)?.[1] ?? e.importance },
+        { key: "poles", label: "Pôle(s)", value: (e) => e.poleIds.map((id) => poleName.get(id) ?? id).join(" · ") },
       ]),
     );
   }
 
-  if (programs.isLoading || solicitations.isLoading) {
+  if (programs.isLoading) {
     return (
       <AppShell title="Planning">
         <div className="space-y-3">
@@ -199,7 +242,7 @@ function Planning() {
   }
 
   return (
-    <AppShell title="Planning" subtitle="Calendrier général — programmes, sollicitations, filtres et conflits">
+    <AppShell title="Planning" subtitle="Calendrier des programmes">
       <div className="space-y-5">
         <Card>
           <CardContent className="space-y-4 p-4">
@@ -219,33 +262,35 @@ function Planning() {
             <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
               <select className="h-9 rounded-md border border-input bg-background px-3 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
                 <option value="all">Tous les statuts</option>
-                {statusOptions.map((v) => <option key={v} value={v}>{STATUS_LABEL[v] ?? v}</option>)}
+                {STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
               <select className="h-9 rounded-md border border-input bg-background px-3 text-sm" value={programType} onChange={(e) => setProgramType(e.target.value)}>
                 <option value="all">Tous les types</option>
-                {typeOptions.map((v) => <option key={v} value={v}>{v}</option>)}
+                {TYPE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
               <select className="h-9 rounded-md border border-input bg-background px-3 text-sm" value={format} onChange={(e) => setFormat(e.target.value)}>
                 <option value="all">Tous les formats</option>
-                {formatOptions.map((v) => <option key={v} value={v}>{v}</option>)}
+                {FORMAT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
               <select className="h-9 rounded-md border border-input bg-background px-3 text-sm" value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>
-                <option value="all">Toutes récurrences</option>
-                {recurrenceOptions.map((v) => <option key={v} value={v}>{v}</option>)}
+                <option value="all">Toutes les récurrences</option>
+                {RECURRENCE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+              <select className="h-9 rounded-md border border-input bg-background px-3 text-sm" value={imminence} onChange={(e) => setImminence(e.target.value)}>
+                <option value="all">Toute imminence</option>
+                {IMMINENCE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
               <select className="h-9 rounded-md border border-input bg-background px-3 text-sm" value={importance} onChange={(e) => setImportance(e.target.value)}>
                 <option value="all">Toute importance</option>
-                {importanceOptions.map((v) => <option key={v} value={v}>{v}</option>)}
+                {IMPORTANCE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
-              <select className="h-9 rounded-md border border-input bg-background px-3 text-sm" value={pole} onChange={(e) => setPole(e.target.value)}>
-                <option value="all">Tous les pôles</option>
-                {(poles.data ?? []).filter((p) => !p.archived).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+            </div>
+
+            <div className="flex justify-end">
+              <Button size="sm" variant="ghost" onClick={resetFilters}>Réinitialiser les filtres</Button>
             </div>
           </CardContent>
         </Card>
-
-        {isStaff ? <ConflictsPanel limit={6} /> : null}
 
         <div className="rounded-2xl border border-border bg-card p-3 sm:p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -261,6 +306,8 @@ function Planning() {
               const dayEntries = entries.filter((entry) => entry.date && entry.date <= ds && (entry.endDate ?? entry.date) >= ds);
               const muted = view === "month" && date.getMonth() !== anchor.getMonth();
               const today = ds === isoDate(new Date());
+              const limit = view === "week" ? 8 : 4;
+
               return (
                 <div key={ds} className={`min-h-28 bg-card p-1.5 sm:min-h-36 sm:p-2 ${muted ? "opacity-45" : ""}`}>
                   <div className="mb-1 flex items-center justify-between">
@@ -268,40 +315,19 @@ function Planning() {
                     {isStaff ? <Link to="/administration" title={`Créer un programme le ${ds}`} className="text-xs font-black text-icc-violet hover:underline">＋</Link> : null}
                   </div>
                   <div className="space-y-1">
-                    {dayEntries.slice(0, view === "week" ? 8 : 4).map((entry) => (
-                      <Link key={`${entry.id}-${ds}`} to={entry.kind === "program" ? "/programmes" : "/sollicitations"} className={`block rounded-md border px-1.5 py-1 text-[9px] leading-tight transition-colors hover:border-icc-violet sm:text-[10px] ${entry.kind === "program" ? "bg-icc-violet/5" : "bg-icc-yellow/10"}`}>
+                    {dayEntries.slice(0, limit).map((entry) => (
+                      <Link key={`${entry.id}-${ds}`} to="/programmes" className="block rounded-md border bg-icc-violet/5 px-1.5 py-1 text-[9px] leading-tight transition-colors hover:border-icc-violet sm:text-[10px]">
                         <span className="block truncate font-black">{entry.startTime ? `${entry.startTime.slice(0, 5)} · ` : ""}{entry.title}</span>
                         <span className="block truncate text-muted-foreground">{STATUS_LABEL[entry.status] ?? entry.status}</span>
                       </Link>
                     ))}
-                    {dayEntries.length > (view === "week" ? 8 : 4) ? <p className="text-[9px] font-bold text-muted-foreground">+ {dayEntries.length - (view === "week" ? 8 : 4)} autre(s)</p> : null}
+                    {dayEntries.length > limit ? <p className="text-[9px] font-bold text-muted-foreground">+ {dayEntries.length - limit} autre(s)</p> : null}
                   </div>
                 </div>
               );
             })}
           </div>
         </div>
-
-        {entries.length === 0 ? <EmptyState title="Aucun élément avec ces filtres" description="Modifiez les filtres ou créez un nouveau programme." /> : (
-          <div className="space-y-2">
-            <h3 className="text-sm font-black text-icc-violet">Liste chronologique complémentaire</h3>
-            {entries.slice(0, 20).map((entry) => (
-              <Link key={entry.id} to={entry.kind === "program" ? "/programmes" : "/sollicitations"} className="flex flex-col justify-between gap-2 rounded-xl border border-border bg-card p-3 hover:border-icc-violet/40 sm:flex-row sm:items-center">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={entry.kind === "program" ? "default" : "outline"}>{entry.kind === "program" ? "Programme" : "Sollicitation"}</Badge>
-                    <span className="font-bold">{entry.title}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{entry.detail}</p>
-                </div>
-                <div className="text-xs sm:text-right">
-                  <p className="font-bold">{entry.date ?? "Date à définir"}{entry.startTime ? ` · ${entry.startTime.slice(0, 5)}` : ""}</p>
-                  <p className="text-muted-foreground">{STATUS_LABEL[entry.status] ?? entry.status}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
       </div>
     </AppShell>
   );
