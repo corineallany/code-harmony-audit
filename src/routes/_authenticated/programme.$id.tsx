@@ -19,7 +19,7 @@ import {
   PRESENCE_LABEL,
   programDocumentsQuery,
   programsQuery,
-  RESPONSE_LABEL,
+  recurrenceLabel,
   solicitationsQuery,
   STATUS_LABEL,
   timelineQuery,
@@ -55,6 +55,34 @@ export const Route = createFileRoute("/_authenticated/programme/$id")({
 });
 
 const RESPONSES: ResponseStatus[] = ["available", "partial", "unavailable"];
+const RESPONSE_TEXT: Record<string, string> = {
+  available: "Accepté",
+  partial: "Accepté partiellement",
+  unavailable: "Refusé",
+  pending: "En attente",
+};
+
+function responseLabel(status: string | null | undefined) {
+  return status ? RESPONSE_TEXT[status] ?? status : "En attente";
+}
+
+function solicitationNature(s: {
+  target_type?: string | null;
+  mode?: string | null;
+  replacement_member_id?: string | null;
+  event_name?: string | null;
+}) {
+  const raw = `${s.target_type ?? ""} ${s.mode ?? ""} ${s.event_name ?? ""}`.toLowerCase();
+  return s.replacement_member_id || raw.includes("remplac") ? "Remplacement" : "Renfort ponctuel";
+}
+
+function solicitationResponse(status: string | null | undefined, decision: string | null | undefined) {
+  const value = decision ?? status ?? "pending";
+  if (["accepted", "available", "validated"].includes(value)) return "Accepté";
+  if (["partial", "partially_accepted"].includes(value)) return "Accepté partiellement";
+  if (["refused", "unavailable", "rejected"].includes(value)) return "Refusé";
+  return "En attente";
+}
 
 function ProgramSheet() {
   const { id } = Route.useParams();
@@ -70,6 +98,17 @@ function ProgramSheet() {
   const notes = useQuery(internalNotesQuery);
   const attendance = useQuery(attendanceQuery);
   const timeline = useQuery(timelineQuery("program", id));
+  const programResponses = useQuery({
+    queryKey: ["program-responses", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("program_member_responses")
+        .select("*")
+        .eq("program_id", id);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+  });
 
   const program = (programs.data ?? []).find((p) => p.id === id) ?? null;
 
@@ -96,31 +135,57 @@ function ProgramSheet() {
     () => Array.from(new Set((program?.assignments ?? []).flatMap((a) => a.memberIds))),
     [program],
   );
-  const responseOf = (mid: string) => program?.responses.find((r) => r.member_id === mid) ?? null;
+  const responseOf = (mid: string) => (programResponses.data ?? []).find((r) => r.member_id === mid) ?? null;
+
+  const [responseEditor, setResponseEditor] = useState<ResponseStatus | null>(null);
+  const [responseNote, setResponseNote] = useState("");
 
   const respond = useMutation({
-    mutationFn: async (status: ResponseStatus) => {
+    mutationFn: async ({ status, note }: { status: ResponseStatus; note?: string }) => {
       if (!member?.id) throw new Error("Votre compte n'est lié à aucun équipier.");
+      const clean = note?.trim() || null;
       const { error } = await supabase.from("program_member_responses").upsert(
-        { id: `${id}__${member.id}`, program_id: id, member_id: member.id, status },
+        {
+          id: `${id}__${member.id}`,
+          program_id: id,
+          member_id: member.id,
+          status,
+          reserve: status === "partial" ? clean : null,
+          reason: status === "unavailable" ? clean : null,
+        },
         { onConflict: "program_id,member_id" },
       );
       if (error) throw new Error(error.message);
       await logAction({
-        action: "reponse_disponibilite",
+        action: "reponse_affectation",
         entity: "program",
         entityId: id,
-        detail: RESPONSE_LABEL[status],
+        detail: `${responseLabel(status)}${clean ? ` — ${clean}` : ""}`,
         actorName: member.full_name,
       });
     },
     onSuccess: () => {
+      setResponseEditor(null);
+      setResponseNote("");
       toast.success("Réponse enregistrée");
+      queryClient.invalidateQueries({ queryKey: ["program-responses", id] });
       queryClient.invalidateQueries({ queryKey: ["programs"] });
       queryClient.invalidateQueries({ queryKey: ["timeline", "program", id] });
     },
     onError: (e: Error) => toast.error("Enregistrement impossible", { description: e.message }),
   });
+
+  function chooseResponse(status: ResponseStatus) {
+    if (status === "available") {
+      setResponseEditor(null);
+      setResponseNote("");
+      respond.mutate({ status });
+      return;
+    }
+    const existing = responseOf(member?.id ?? "");
+    setResponseEditor(status);
+    setResponseNote(status === "partial" ? existing?.reserve ?? "" : existing?.reason ?? "");
+  }
 
   const [docTitle, setDocTitle] = useState("");
   const [docUrl, setDocUrl] = useState("");
@@ -194,6 +259,7 @@ function ProgramSheet() {
   }
 
   const mine = member?.id ? responseOf(member.id) : null;
+  const canRespond = !!member?.id && assignedIds.includes(member.id);
 
   return (
     <AppShell
@@ -238,9 +304,14 @@ function ProgramSheet() {
                 value={`${program.start_time ?? "—"} → ${program.end_time ?? "—"}`}
               />
               <Info label="Lieu" value={program.location ?? "—"} />
-              <Info label="Sur place / déplacement" value={program.onsite ?? program.travel ?? "—"} />
+              {(program.onsite || program.travel) ? (
+                <>
+                  <Info label="Membres sur place" value={program.onsite ?? "—"} />
+                  <Info label="Membres en déplacement" value={program.travel ?? "—"} />
+                </>
+              ) : null}
               <Info label="Public" value={program.audience ?? "—"} />
-              <Info label="Récurrence" value={program.recurrence ?? "Aucune"} />
+              <Info label="Récurrence" value={recurrenceLabel(program.recurrence)} />
               <Info
                 label="Pôles mobilisés"
                 value={
@@ -263,25 +334,61 @@ function ProgramSheet() {
             </CardContent>
           </Card>
 
-          {member?.id ? (
+          {canRespond ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Ma réponse</CardTitle>
+                <CardTitle className="text-base">Ma réponse à l'affectation</CardTitle>
               </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {RESPONSES.map((status) => (
-                  <Button
-                    key={status}
-                    size="sm"
-                    variant={mine?.status === status ? "default" : "outline"}
-                    disabled={respond.isPending}
-                    onClick={() => respond.mutate(status)}
-                  >
-                    {RESPONSE_LABEL[status]}
-                  </Button>
-                ))}
-                {respond.isPending ? (
-                  <span className="self-center text-xs text-muted-foreground">Synchronisation…</span>
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {RESPONSES.map((status) => (
+                    <Button
+                      key={status}
+                      size="sm"
+                      variant={mine?.status === status ? "default" : "outline"}
+                      disabled={respond.isPending}
+                      onClick={() => chooseResponse(status)}
+                    >
+                      {status === "available" ? "Accepter" : status === "partial" ? "Accepter partiellement" : "Refuser"}
+                    </Button>
+                  ))}
+                  {respond.isPending ? (
+                    <span className="self-center text-xs text-muted-foreground">Synchronisation…</span>
+                  ) : null}
+                </div>
+
+                {responseEditor ? (
+                  <div className="rounded-xl border border-border bg-muted/30 p-3">
+                    <p className="mb-2 text-sm font-bold text-icc-violet">
+                      {responseEditor === "partial" ? "Réserve liée à l'acceptation partielle" : "Motif du refus"}
+                    </p>
+                    <Textarea
+                      rows={3}
+                      value={responseNote}
+                      onChange={(e) => setResponseNote(e.target.value)}
+                      placeholder={responseEditor === "partial" ? "Ex. : disponible à partir de 15 h, départ à 18 h…" : "Indique ton motif si tu le souhaites."}
+                    />
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        size="sm"
+                        disabled={respond.isPending || (responseEditor === "partial" && !responseNote.trim())}
+                        onClick={() => respond.mutate({ status: responseEditor, note: responseNote })}
+                      >
+                        Enregistrer ma réponse
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setResponseEditor(null); setResponseNote(""); }}>
+                        Annuler
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {mine ? (
+                  <p className="text-xs text-muted-foreground">
+                    Réponse actuelle : <b>{responseLabel(mine.status)}</b>
+                    {mine.reserve ? ` · Réserve : ${mine.reserve}` : ""}
+                    {mine.reason ? ` · Motif : ${mine.reason}` : ""}
+                  </p>
                 ) : null}
               </CardContent>
             </Card>
@@ -310,15 +417,27 @@ function ProgramSheet() {
               <CardHeader>
                 <CardTitle className="text-base">Sollicitations ponctuelles liées</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                {linkedSolicitations.map((s) => (
-                  <p key={s.id}>
-                    <b>{s.event_name ?? "Sollicitation"}</b> — {STATUS_LABEL[s.status] ?? s.status}
-                    {s.replacement_member_id
-                      ? ` · ${memberName(s.replacement_member_id)} remplace / renforce l'équipe`
-                      : ""}
-                  </p>
-                ))}
+              <CardContent className="space-y-3">
+                {linkedSolicitations.map((s) => {
+                  const nature = solicitationNature(s);
+                  const person = s.replacement_member_id
+                    ? memberName(s.replacement_member_id)
+                    : s.target_name ?? "Personne sollicitée non renseignée";
+                  const answer = solicitationResponse(s.status, s.decision);
+                  return (
+                    <div key={s.id} className="rounded-xl border border-border bg-muted/30 p-3 text-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <b className="text-icc-violet">{nature}</b>
+                        <Badge variant={answer === "Refusé" ? "destructive" : answer === "En attente" ? "outline" : "secondary"}>
+                          {answer}
+                        </Badge>
+                      </div>
+                      <p className="mt-1"><b>Personne sollicitée :</b> {person}</p>
+                      {s.event_name ? <p className="mt-1 text-muted-foreground">{s.event_name}</p> : null}
+                      {s.decision_note ? <p className="mt-1"><b>Précision :</b> {s.decision_note}</p> : null}
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
           ) : null}
@@ -349,11 +468,12 @@ function ProgramSheet() {
                           return (
                             <li key={mid} className="flex flex-wrap items-center gap-2">
                               <span>{memberName(mid)}</span>
-                              <Badge variant="outline">
-                                {r ? RESPONSE_LABEL[r.status] : "Pas encore répondu"}
-                              </Badge>
+                              <Badge variant="outline">{r ? responseLabel(r.status) : "Pas encore répondu"}</Badge>
+                              {r?.reserve && isStaff ? (
+                                <span className="text-xs text-muted-foreground">Réserve : {r.reserve}</span>
+                              ) : null}
                               {r?.reason && isStaff ? (
-                                <span className="text-xs text-muted-foreground">({r.reason})</span>
+                                <span className="text-xs text-muted-foreground">Motif : {r.reason}</span>
                               ) : null}
                               {att ? (
                                 <Badge variant="secondary">
