@@ -1,10 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 import { AppShell, EmptyState } from "@/components/AppShell";
 import { ROLE_LABEL, useCurrentRole } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import {
   auditQuery,
   availabilityQuery,
@@ -13,15 +11,12 @@ import {
   formatDate,
   formatDateTime,
   membersQuery,
-  NOTIFICATION_EVENTS,
-  notificationPreferencesQuery,
   polesQuery,
   programsQuery,
   RESPONSE_LABEL,
 } from "@/lib/icc";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_authenticated/mon-profil")({
@@ -36,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/mon-profil")({
       { property: "og:title", content: "Mon profil — COM ICC Le Mans" },
       {
         property: "og:description",
-        content: "Profil, planning personnel, services, formation, évaluations et préférences de notifications.",
+        content: "Profil, planning personnel, services, formation, évaluations et activité.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -46,15 +41,13 @@ export const Route = createFileRoute("/_authenticated/mon-profil")({
 });
 
 function MonProfil() {
-  const { member, role, roles, isTechAdmin, userId } = useCurrentRole();
+  const { member, role, isTechAdmin, userId } = useCurrentRole();
   const programs = useQuery(programsQuery);
   const poles = useQuery(polesQuery);
   const members = useQuery(membersQuery);
   const availability = useQuery(availabilityQuery);
   const evaluations = useQuery(evaluationsQuery);
   const audit = useQuery(auditQuery);
-  const prefs = useQuery(notificationPreferencesQuery(userId));
-  const queryClient = useQueryClient();
 
   const memberId = member?.id ?? null;
   const today = new Date().toISOString().slice(0, 10);
@@ -69,37 +62,11 @@ function MonProfil() {
     (e) => e.subject_member_id === memberId && e.status === "validated",
   );
   const myPoles = (members.data?.links ?? []).filter((l) => l.member_id === memberId);
+  const referentPoles = myPoles.filter((l) => l.is_referent);
   const poleName = (id: string) => poles.data?.find((p) => p.id === id)?.name ?? "Pôle";
   const myActivity = (audit.data ?? []).filter(
     (a) => a.actor_id === userId || a.actor_name === member?.full_name,
   );
-
-  const savePref = useMutation({
-    mutationFn: async ({ event, field, value }: { event: string; field: "in_app" | "push"; value: boolean }) => {
-      if (!userId) throw new Error("Session expirée.");
-      const current = (prefs.data ?? []).find((p) => p.event_type === event);
-      const { error } = await supabase.from("notification_preferences").upsert(
-        {
-          user_id: userId,
-          event_type: event,
-          in_app: field === "in_app" ? value : (current?.in_app ?? true),
-          push: field === "push" ? value : (current?.push ?? true),
-        },
-        { onConflict: "user_id,event_type" },
-      );
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => {
-      toast.success("Préférence enregistrée");
-      queryClient.invalidateQueries({ queryKey: ["notification-preferences", userId] });
-    },
-    onError: (e: Error) => toast.error("Enregistrement impossible", { description: e.message }),
-  });
-
-  const prefOf = (event: string, field: "in_app" | "push") => {
-    const row = (prefs.data ?? []).find((p) => p.event_type === event);
-    return row ? row[field] : true;
-  };
 
   if (!member) {
     return (
@@ -123,7 +90,6 @@ function MonProfil() {
           <TabsTrigger value="formation">Formation</TabsTrigger>
           <TabsTrigger value="evaluations">Évaluations</TabsTrigger>
           <TabsTrigger value="activite">Activité</TabsTrigger>
-          <TabsTrigger value="preferences">Préférences</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profil">
@@ -139,11 +105,7 @@ function MonProfil() {
               <div>
                 <CardTitle>{member.full_name}</CardTitle>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {roles.map((r) => (
-                    <Badge key={r} variant="secondary">
-                      {ROLE_LABEL[r]}
-                    </Badge>
-                  ))}
+                  {role ? <Badge variant="secondary">{ROLE_LABEL[role]}</Badge> : null}
                   {isTechAdmin ? <Badge variant="outline">🛡️ Admin technique</Badge> : null}
                 </div>
               </div>
@@ -152,11 +114,14 @@ function MonProfil() {
               <p>
                 <b>Pôles :</b>{" "}
                 {myPoles.length
-                  ? myPoles
-                      .map((l) => `${poleName(l.pole_id)}${l.is_referent ? " (référent)" : ""}`)
-                      .join(", ")
+                  ? myPoles.map((l) => poleName(l.pole_id)).join(", ")
                   : "Aucun pôle"}
               </p>
+              {referentPoles.length ? (
+                <p>
+                  <b>Référent :</b> {referentPoles.map((l) => poleName(l.pole_id)).join(", ")}
+                </p>
+              ) : null}
               <p className="text-muted-foreground">
                 Les informations d'identité sont gérées dans le module Équipiers par l'encadrement.
               </p>
@@ -266,8 +231,7 @@ function MonProfil() {
             <CardContent className="space-y-2 text-sm">
               {myEvaluations.length === 0 ? (
                 <p className="text-muted-foreground">
-                  Aucune évaluation validée. Une évaluation n'est visible qu'après validation du
-                  Responsable.
+                  Aucune évaluation validée. Une évaluation n'est visible qu'après validation du Responsable.
                 </p>
               ) : (
                 myEvaluations.map((e) => (
@@ -303,44 +267,6 @@ function MonProfil() {
                   </p>
                 ))
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="preferences">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Mes préférences de notifications</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {NOTIFICATION_EVENTS.map((e) => (
-                <div
-                  key={e.key}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3"
-                >
-                  <span className="text-sm">{e.label}</span>
-                  <div className="flex items-center gap-4 text-xs">
-                    <label className="flex items-center gap-2">
-                      Application
-                      <Switch
-                        checked={prefOf(e.key, "in_app")}
-                        onCheckedChange={(value) =>
-                          savePref.mutate({ event: e.key, field: "in_app", value })
-                        }
-                      />
-                    </label>
-                    <label className="flex items-center gap-2">
-                      Push
-                      <Switch
-                        checked={prefOf(e.key, "push")}
-                        onCheckedChange={(value) =>
-                          savePref.mutate({ event: e.key, field: "push", value })
-                        }
-                      />
-                    </label>
-                  </div>
-                </div>
-              ))}
             </CardContent>
           </Card>
         </TabsContent>
