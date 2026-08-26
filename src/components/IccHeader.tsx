@@ -9,13 +9,12 @@ import { NotificationBell } from "@/components/NotificationBell";
 
 /** En-tête unique de l'application, reprise fidèle de l'en-tête violet d'origine. */
 export function IccHeader() {
-  const { role, member, isStaff, isTechAdmin } = useCurrentRole();
+  const { role, member, isStaff } = useCurrentRole();
   const settings = useQuery(settingsQuery);
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
   const rawBrand = (settings.data?.brand ?? "").trim();
-  // La pastille jaune porte déjà « ICC » : la seconde ligne reste « LE MANS ».
   const brand = rawBrand && rawBrand.toUpperCase() !== "ICC" ? rawBrand : "LE MANS";
   const subtitle = settings.data?.subtitle ?? "Communication • Organisation • Service";
   const icon = settings.data?.icon_url ?? null;
@@ -26,7 +25,6 @@ export function IccHeader() {
     .join("")
     .toUpperCase();
   const roleLabel = role ? ROLE_LABEL[role] : "Sans rôle";
-  const accountLabel = isTechAdmin ? `${roleLabel} · Admin technique` : roleLabel;
 
   async function signOut() {
     setOpen(false);
@@ -66,14 +64,21 @@ export function IccHeader() {
               </span>
               <span className="text-left leading-tight">
                 <span className="block text-[10px] font-bold">{member?.full_name ?? "Mon compte"}</span>
-                <span className="mt-0.5 block text-[8px] font-semibold text-white/70">{accountLabel}</span>
+                <span className="mt-0.5 block text-[8px] font-semibold text-white/70">{roleLabel}</span>
               </span>
             </button>
             {open ? (
-              <div className="absolute right-0 z-[80] mt-2 w-64 overflow-hidden rounded-xl border border-border bg-white p-4 text-slate-800 shadow-2xl">
-                <p className="text-sm font-black text-icc-violet">{member?.full_name ?? "Compte"}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{accountLabel}</p>
-                <button type="button" onClick={signOut} className="mt-3 w-full rounded-lg bg-icc-violet px-3 py-2 text-xs font-bold text-white">Se déconnecter</button>
+              <div className="absolute right-0 z-[80] mt-2 w-72 overflow-hidden rounded-xl border border-border bg-white p-3 text-slate-800 shadow-2xl">
+                <div className="px-2 pb-2">
+                  <p className="text-sm font-black text-icc-violet">{member?.full_name ?? "Compte"}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{roleLabel}</p>
+                </div>
+                <div className="space-y-1 border-t border-border pt-2 text-sm">
+                  <Link to="/mon-profil" onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 font-semibold hover:bg-muted">👤 Voir mon profil</Link>
+                  <Link to="/mon-profil" onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 font-semibold hover:bg-muted">🔔 Préférences & notifications</Link>
+                  <Link to="/mon-profil" onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 font-semibold hover:bg-muted">📱 Mes appareils / Push</Link>
+                </div>
+                <button type="button" onClick={signOut} className="mt-2 w-full rounded-lg bg-icc-violet px-3 py-2 text-xs font-bold text-white">Se déconnecter</button>
               </div>
             ) : null}
           </div>
