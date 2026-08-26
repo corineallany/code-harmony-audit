@@ -4,7 +4,6 @@ import { settingsQuery } from "@/lib/icc";
 
 type Verse = { ref: string; text: string };
 
-/** Versets d'origine, utilisés si la base ne contient encore rien. */
 const DEFAULT_VERSES: Verse[] = [
   {
     ref: "Matthieu 6:33",
@@ -27,8 +26,20 @@ export function HomeHero() {
     return { ref: v.ref ?? fallback.ref, text: v.text ?? fallback.text };
   });
 
+  const showCover = settings.data?.cover_enabled !== false && !!settings.data?.cover_url;
+  const coverStyle = showCover
+    ? {
+        backgroundImage: `linear-gradient(135deg, rgba(76, 8, 132, .88), rgba(24, 65, 177, .82)), url("${settings.data?.cover_url}")`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : undefined;
+
   return (
-    <section className="icc-hero flex min-h-[390px] flex-col justify-between rounded-3xl p-7 text-white shadow-xl md:p-12">
+    <section
+      className="icc-hero flex min-h-[390px] flex-col justify-between rounded-3xl p-7 text-white shadow-xl md:p-12"
+      style={coverStyle}
+    >
       <div>
         <p className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur">
           ⛪ ICC Le Mans
