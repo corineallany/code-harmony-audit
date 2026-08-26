@@ -1,174 +1,231 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
-import { Bell, BellOff, Send } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Building2, Home, Save, ShieldCheck, SlidersHorizontal, Users } from "lucide-react";
 
 import { AppShell } from "@/components/AppShell";
-import { formatDateTime, settingsQuery } from "@/lib/icc";
-import { ROLE_LABEL, useCurrentRole } from "@/hooks/useAuth";
-import { usePush } from "@/hooks/usePush";
+import { membersQuery, polesQuery, settingsQuery } from "@/lib/icc";
 import { supabase } from "@/integrations/supabase/client";
-import { sendNotification } from "@/lib/push.functions";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/parametres")({
-  head: () => ({
-    meta: [
-      { title: "Paramètres — COM ICC Le Mans" },
-      {
-        name: "description",
-        content: "Paramètres de l'espace équipe : rôles, permissions et informations techniques de la base unique.",
-      },
-      { property: "og:title", content: "Paramètres — COM ICC Le Mans" },
-      { property: "og:description", content: "Rôles, permissions et informations de la base de données unique." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "Paramètres — COM ICC Le Mans" }] }),
   component: Parametres,
 });
 
+type Verse = { ref: string; text: string };
+
+const DEFAULT_VERSES: Verse[] = [
+  {
+    ref: "Matthieu 6:33",
+    text: "« Cherchez premièrement le royaume et la justice de Dieu; et toutes ces choses vous seront données par-dessus. »",
+  },
+  {
+    ref: "Hébreux 6:10",
+    text: "« Car Dieu n’est pas injuste, pour oublier votre travail et l’amour que vous avez montré pour son nom, ayant rendu et rendant encore des services aux saints. »",
+  },
+];
+
 function Parametres() {
+  const queryClient = useQueryClient();
   const settings = useQuery(settingsQuery);
-  const { role, member, userId } = useCurrentRole();
-  const push = usePush(userId);
-  const [testSent, setTestSent] = useState(false);
+  const members = useQuery(membersQuery);
+  const poles = useQuery(polesQuery);
 
-  const permissions = useQuery({
-    queryKey: ["role-permissions-all"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("role_permissions").select("role, permission");
-      if (error) throw new Error(error.message);
-      return data ?? [];
-    },
-  });
+  const [homeTitle, setHomeTitle] = useState("");
+  const [brand, setBrand] = useState("");
+  const [subtitle, setSubtitle] = useState("");
+  const [iconUrl, setIconUrl] = useState("");
+  const [coverUrl, setCoverUrl] = useState("");
+  const [coverEnabled, setCoverEnabled] = useState(true);
+  const [verses, setVerses] = useState<Verse[]>(DEFAULT_VERSES);
 
-  const byRole = new Map<string, string[]>();
-  for (const p of permissions.data ?? []) {
-    byRole.set(p.role, [...(byRole.get(p.role) ?? []), p.permission]);
-  }
+  useEffect(() => {
+    const s = settings.data;
+    if (!s) return;
+    setHomeTitle(s.home_title ?? "COM ICC Le Mans");
+    setBrand(s.brand ?? "LE MANS");
+    setSubtitle(s.subtitle ?? "Communication • Organisation • Service");
+    setIconUrl(s.icon_url ?? "");
+    setCoverUrl(s.cover_url ?? "");
+    setCoverEnabled(s.cover_enabled ?? true);
+    const stored = Array.isArray(s.verses) ? (s.verses as unknown as Verse[]) : [];
+    setVerses([0, 1].map((i) => ({ ref: stored[i]?.ref ?? DEFAULT_VERSES[i].ref, text: stored[i]?.text ?? DEFAULT_VERSES[i].text })));
+  }, [settings.data]);
 
-  const testPushMut = useMutation({
+  const activeMembers = useMemo(
+    () => (members.data?.members ?? []).filter((m) => m.status === "active"),
+    [members.data],
+  );
+  const activePoles = useMemo(() => (poles.data ?? []).filter((p) => !p.archived), [poles.data]);
+
+  const saveIdentity = useMutation({
     mutationFn: async () => {
-      if (!userId) throw new Error("Non connecté");
-      return sendNotification({
-        data: {
-          userIds: [userId],
-          type: "test",
-          title: "Notification de test",
-          body: "Les notifications push fonctionnent correctement.",
-          link: "/parametres",
-        },
+      const { error } = await supabase.from("app_settings").upsert({
+        id: "main",
+        home_title: homeTitle.trim() || "COM ICC Le Mans",
+        brand: brand.trim() || "LE MANS",
+        subtitle: subtitle.trim() || null,
+        icon_url: iconUrl.trim() || null,
+        cover_url: coverUrl.trim() || null,
+        cover_enabled: coverEnabled,
+        verses,
+        updated_at: new Date().toISOString(),
       });
+      if (error) throw new Error(error.message);
     },
     onSuccess: () => {
-      setTestSent(true);
-      setTimeout(() => setTestSent(false), 5000);
+      queryClient.invalidateQueries({ queryKey: ["app-settings"] });
+      toast.success("Identité et accueil enregistrés");
     },
+    onError: (e: Error) => toast.error("Enregistrement impossible", { description: e.message }),
+  });
+
+  const saveSupervisor = useMutation({
+    mutationFn: async (memberId: string | null) => {
+      const { error } = await supabase.from("app_settings").update({
+        supervisor_member_id: memberId,
+        adjoint_member_id: null,
+        updated_at: new Date().toISOString(),
+      }).eq("id", "main");
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["app-settings"] });
+      toast.success("Responsable mis à jour");
+    },
+    onError: (e: Error) => toast.error("Modification impossible", { description: e.message }),
+  });
+
+  const saveReferent = useMutation({
+    mutationFn: async ({ poleId, memberId }: { poleId: string; memberId: string | null }) => {
+      const poleLinks = (members.data?.links ?? []).filter((l) => l.pole_id === poleId);
+      const currentReferents = poleLinks.filter((l) => l.is_referent);
+      if (currentReferents.length) {
+        const { error } = await supabase.from("member_poles").update({ is_referent: false }).in("id", currentReferents.map((l) => l.id));
+        if (error) throw new Error(error.message);
+      }
+      if (!memberId) return;
+      const existing = poleLinks.find((l) => l.member_id === memberId);
+      if (existing) {
+        const { error } = await supabase.from("member_poles").update({ is_referent: true }).eq("id", existing.id);
+        if (error) throw new Error(error.message);
+      } else {
+        const { error } = await supabase.from("member_poles").insert({ member_id: memberId, pole_id: poleId, is_referent: true });
+        if (error) throw new Error(error.message);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["members"] });
+      toast.success("Référent du pôle mis à jour");
+    },
+    onError: (e: Error) => toast.error("Modification impossible", { description: e.message }),
   });
 
   return (
-    <AppShell title="Paramètres" subtitle="Rôles, permissions et référence technique">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Mon compte</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 text-sm">
-            <p>
-              <span className="text-muted-foreground">Équipier lié : </span>
-              {member?.full_name ?? "Aucun"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Rôle : </span>
-              {role ? ROLE_LABEL[role] : "Sans rôle"}
-            </p>
-          </CardContent>
-        </Card>
+    <AppShell title="Paramètres" subtitle="Configuration générale de l’espace COM ICC Le Mans">
+      <Tabs defaultValue="identite" className="space-y-5">
+        <TabsList className="h-auto flex-wrap justify-start gap-1 bg-muted/70 p-1.5">
+          <TabsTrigger value="identite" className="gap-2"><Home className="size-4" />Identité & accueil</TabsTrigger>
+          <TabsTrigger value="organisation" className="gap-2"><Users className="size-4" />Organisation</TabsTrigger>
+          <TabsTrigger value="droits" className="gap-2"><ShieldCheck className="size-4" />Accès & droits</TabsTrigger>
+          <TabsTrigger value="menus" className="gap-2"><SlidersHorizontal className="size-4" />Menus & modules</TabsTrigger>
+          <TabsTrigger value="technique" className="gap-2"><Building2 className="size-4" />Administration technique</TabsTrigger>
+        </TabsList>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Base de données</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 text-sm">
-            <p>
-              <span className="text-muted-foreground">Nom de l’application : </span>
-              {settings.data?.home_title ?? "COM ICC Le Mans"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Dernière mise à jour : </span>
-              {formatDateTime(settings.data?.updated_at)}
-            </p>
-            <p className="text-muted-foreground">
-              Toutes les données métier proviennent d’une base unique — aucune donnée locale concurrente.
-            </p>
-          </CardContent>
-        </Card>
+        <TabsContent value="identite" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Identité de l’espace</CardTitle>
+              <CardDescription>Ces informations alimentent l’en-tête et l’accueil. Une seule source : Supabase.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <Field label="Nom de l’application"><Input value={homeTitle} onChange={(e) => setHomeTitle(e.target.value)} /></Field>
+              <Field label="Marque / localisation"><Input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="LE MANS" /></Field>
+              <Field label="Sous-titre"><Input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} /></Field>
+              <Field label="Logo / icône (URL)"><Input value={iconUrl} onChange={(e) => setIconUrl(e.target.value)} placeholder="https://…" /></Field>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Notifications push</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <p className="text-muted-foreground">
-              Recevez des alertes sur votre appareil pour les nouvelles solicitations, changements de planning et rappels.
-            </p>
-            {push.state === "unsupported" ? (
-              <p className="text-sm text-muted-foreground">Notifications push non supportées par ce navigateur.</p>
-            ) : push.state === "denied" ? (
-              <p className="text-sm text-destructive">
-                Notifications refusées. Autorisez-les dans les paramètres du navigateur.
-              </p>
-            ) : push.subscribed ? (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-sm text-emerald-600">
-                  <Bell className="size-4" /> Notifications activées
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={push.disable}>
-                    <BellOff className="size-4" /> Désactiver
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => testPushMut.mutate()}
-                    disabled={testPushMut.isPending || testSent}
-                  >
-                    <Send className="size-4" /> {testSent ? "Envoyé ✓" : "Tester"}
-                  </Button>
-                </div>
+          <Card>
+            <CardHeader><CardTitle>Accueil</CardTitle><CardDescription>Couverture et deux versets affichés sur la page d’accueil.</CardDescription></CardHeader>
+            <CardContent className="space-y-5">
+              <div className="flex items-center justify-between rounded-xl border p-4">
+                <div><p className="font-semibold">Afficher la couverture</p><p className="text-sm text-muted-foreground">Active ou masque le visuel de couverture lorsqu’il est configuré.</p></div>
+                <Switch checked={coverEnabled} onCheckedChange={setCoverEnabled} />
               </div>
-            ) : (
-              <Button size="sm" onClick={push.enable} disabled={push.state === "loading"}>
-                <Bell className="size-4" /> Activer les notifications
-              </Button>
-            )}
-            {push.error && <p className="text-xs text-destructive">{push.error}</p>}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Permissions par rôle</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {[...byRole.entries()].map(([roleKey, perms]) => (
-              <div key={roleKey}>
-                <p className="font-medium">{ROLE_LABEL[roleKey as keyof typeof ROLE_LABEL] ?? roleKey}</p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {perms.map((perm) => (
-                    <Badge key={perm} variant="secondary" className="text-[0.7rem] font-normal">
-                      {perm}
-                    </Badge>
-                  ))}
-                </div>
+              <Field label="Image de couverture (URL)"><Input value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="https://…" /></Field>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {verses.map((verse, index) => (
+                  <div key={index} className="space-y-3 rounded-xl border p-4">
+                    <p className="font-bold text-icc-violet">Verset {index + 1}</p>
+                    <Field label="Référence"><Input value={verse.ref} onChange={(e) => setVerses((v) => v.map((x, i) => i === index ? { ...x, ref: e.target.value } : x))} /></Field>
+                    <Field label="Texte"><Textarea rows={4} value={verse.text} onChange={(e) => setVerses((v) => v.map((x, i) => i === index ? { ...x, text: e.target.value } : x))} /></Field>
+                  </div>
+                ))}
               </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+              <Button onClick={() => saveIdentity.mutate()} disabled={saveIdentity.isPending}><Save className="size-4" />{saveIdentity.isPending ? "Enregistrement…" : "Enregistrer Identité & accueil"}</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="organisation" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Direction</CardTitle>
+              <CardDescription>La fonction organisationnelle est distincte des droits techniques. La configuration consolidée utilise un Responsable unique, sans fonction Adjoint.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Field label="Responsable">
+                <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={settings.data?.supervisor_member_id ?? ""} onChange={(e) => saveSupervisor.mutate(e.target.value || null)}>
+                  <option value="">Aucun responsable</option>
+                  {activeMembers.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+                </select>
+              </Field>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Référents par pôle</CardTitle>
+              <CardDescription>Le référent est rattaché directement au pôle. Cette information est ensuite réutilisée dans le trombinoscope et les modules métier.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 md:grid-cols-2">
+              {activePoles.map((pole) => {
+                const referent = (members.data?.links ?? []).find((l) => l.pole_id === pole.id && l.is_referent);
+                return (
+                  <div key={pole.id} className="rounded-xl border p-4">
+                    <Label className="mb-2 block font-bold">{pole.name}</Label>
+                    <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={referent?.member_id ?? ""} onChange={(e) => saveReferent.mutate({ poleId: pole.id, memberId: e.target.value || null })}>
+                      <option value="">Aucun référent</option>
+                      {activeMembers.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+                    </select>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="droits"><ComingSoon title="Accès & droits" text="La matrice Moi / Mon pôle / Tous / Interdit sera consolidée ici, avec les permissions sensibles séparées." /></TabsContent>
+        <TabsContent value="menus"><ComingSoon title="Menus & modules" text="Une seule configuration canonique de visibilité et d’organisation des modules sera installée ici." /></TabsContent>
+        <TabsContent value="technique"><ComingSoon title="Administration technique" text="Cet espace sera réservé aux administrateurs techniques. Les secrets Supabase n’y seront jamais exposés." /></TabsContent>
+      </Tabs>
     </AppShell>
   );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="space-y-2"><Label>{label}</Label>{children}</div>;
+}
+
+function ComingSoon({ title, text }: { title: string; text: string }) {
+  return <Card><CardHeader><CardTitle>{title}</CardTitle><CardDescription>{text}</CardDescription></CardHeader><CardContent><p className="text-sm text-muted-foreground">Cette section sera activée après validation de sa logique afin de ne pas superposer l’ancien et le nouveau système.</p></CardContent></Card>;
 }
