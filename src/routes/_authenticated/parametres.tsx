@@ -21,16 +21,11 @@ export const Route = createFileRoute("/_authenticated/parametres")({
 });
 
 type Verse = { ref: string; text: string };
+type DirectionStructure = "responsable_adjoint" | "responsable_general_grands_groupes";
 
 const DEFAULT_VERSES: Verse[] = [
-  {
-    ref: "Matthieu 6:33",
-    text: "« Cherchez premièrement le royaume et la justice de Dieu; et toutes ces choses vous seront données par-dessus. »",
-  },
-  {
-    ref: "Hébreux 6:10",
-    text: "« Car Dieu n’est pas injuste, pour oublier votre travail et l’amour que vous avez montré pour son nom, ayant rendu et rendant encore des services aux saints. »",
-  },
+  { ref: "Matthieu 6:33", text: "« Cherchez premièrement le royaume et la justice de Dieu; et toutes ces choses vous seront données par-dessus. »" },
+  { ref: "Hébreux 6:10", text: "« Car Dieu n’est pas injuste, pour oublier votre travail et l’amour que vous avez montré pour son nom, ayant rendu et rendant encore des services aux saints. »" },
 ];
 
 function Parametres() {
@@ -38,6 +33,7 @@ function Parametres() {
   const settings = useQuery(settingsQuery);
   const members = useQuery(membersQuery);
   const poles = useQuery(polesQuery);
+  const rawSettings = settings.data as any;
 
   const [homeTitle, setHomeTitle] = useState("");
   const [brand, setBrand] = useState("");
@@ -60,49 +56,37 @@ function Parametres() {
     setVerses([0, 1].map((i) => ({ ref: stored[i]?.ref ?? DEFAULT_VERSES[i].ref, text: stored[i]?.text ?? DEFAULT_VERSES[i].text })));
   }, [settings.data]);
 
-  const activeMembers = useMemo(
-    () => (members.data?.members ?? []).filter((m) => m.status === "active"),
-    [members.data],
-  );
+  const activeMembers = useMemo(() => (members.data?.members ?? []).filter((m) => m.status === "active"), [members.data]);
   const activePoles = useMemo(() => (poles.data ?? []).filter((p) => !p.archived), [poles.data]);
+  const directionStructure: DirectionStructure = rawSettings?.direction_structure ?? "responsable_adjoint";
 
   const saveIdentity = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("app_settings").upsert({
-        id: "main",
-        home_title: homeTitle.trim() || "COM ICC Le Mans",
-        brand: brand.trim() || "LE MANS",
-        subtitle: subtitle.trim() || null,
-        icon_url: iconUrl.trim() || null,
-        cover_url: coverUrl.trim() || null,
-        cover_enabled: coverEnabled,
-        verses,
-        updated_at: new Date().toISOString(),
+        id: "main", home_title: homeTitle.trim() || "COM ICC Le Mans", brand: brand.trim() || "LE MANS",
+        subtitle: subtitle.trim() || null, icon_url: iconUrl.trim() || null, cover_url: coverUrl.trim() || null,
+        cover_enabled: coverEnabled, verses, updated_at: new Date().toISOString(),
       });
       if (error) throw new Error(error.message);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["app-settings"] });
-      toast.success("Identité et accueil enregistrés");
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["app-settings"] }); toast.success("Identité et accueil enregistrés"); },
     onError: (e: Error) => toast.error("Enregistrement impossible", { description: e.message }),
   });
 
-  const saveSupervisor = useMutation({
-    mutationFn: async (memberId: string | null) => {
-      const { error } = await supabase.from("app_settings").update({
-        supervisor_member_id: memberId,
-        adjoint_member_id: null,
-        updated_at: new Date().toISOString(),
-      }).eq("id", "main");
+  const saveDirection = useMutation({
+    mutationFn: async (patch: Record<string, unknown>) => {
+      const { error } = await supabase.from("app_settings").update({ ...patch, updated_at: new Date().toISOString() } as any).eq("id", "main");
       if (error) throw new Error(error.message);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["app-settings"] });
-      toast.success("Responsable mis à jour");
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["app-settings"] }); toast.success("Organisation mise à jour"); },
     onError: (e: Error) => toast.error("Modification impossible", { description: e.message }),
   });
+
+  const changeStructure = (value: DirectionStructure) => {
+    saveDirection.mutate(value === "responsable_adjoint"
+      ? { direction_structure: value, grands_groupes_member_id: null }
+      : { direction_structure: value, adjoint_member_id: null });
+  };
 
   const saveReferent = useMutation({
     mutationFn: async ({ poleId, memberId }: { poleId: string; memberId: string | null }) => {
@@ -122,12 +106,18 @@ function Parametres() {
         if (error) throw new Error(error.message);
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["members"] });
-      toast.success("Référent du pôle mis à jour");
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["members"] }); toast.success("Référent du pôle mis à jour"); },
     onError: (e: Error) => toast.error("Modification impossible", { description: e.message }),
   });
+
+  const memberSelect = (label: string, value: string, field: string) => (
+    <Field label={label}>
+      <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={value} onChange={(e) => saveDirection.mutate({ [field]: e.target.value || null })}>
+        <option value="">Non défini</option>
+        {activeMembers.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+      </select>
+    </Field>
+  );
 
   return (
     <AppShell title="Paramètres" subtitle="Configuration générale de l’espace COM ICC Le Mans">
@@ -141,77 +131,45 @@ function Parametres() {
         </TabsList>
 
         <TabsContent value="identite" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Identité de l’espace</CardTitle>
-              <CardDescription>Ces informations alimentent l’en-tête et l’accueil. Une seule source : Supabase.</CardDescription>
-            </CardHeader>
+          <Card><CardHeader><CardTitle>Identité de l’espace</CardTitle><CardDescription>Ces informations alimentent l’en-tête et l’accueil. Une seule source : Supabase.</CardDescription></CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <Field label="Nom de l’application"><Input value={homeTitle} onChange={(e) => setHomeTitle(e.target.value)} /></Field>
               <Field label="Marque / localisation"><Input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="LE MANS" /></Field>
               <Field label="Sous-titre"><Input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} /></Field>
               <Field label="Logo / icône (URL)"><Input value={iconUrl} onChange={(e) => setIconUrl(e.target.value)} placeholder="https://…" /></Field>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle>Accueil</CardTitle><CardDescription>Couverture et deux versets affichés sur la page d’accueil.</CardDescription></CardHeader>
+            </CardContent></Card>
+          <Card><CardHeader><CardTitle>Accueil</CardTitle><CardDescription>Couverture et deux versets affichés sur la page d’accueil.</CardDescription></CardHeader>
             <CardContent className="space-y-5">
-              <div className="flex items-center justify-between rounded-xl border p-4">
-                <div><p className="font-semibold">Afficher la couverture</p><p className="text-sm text-muted-foreground">Active ou masque le visuel de couverture lorsqu’il est configuré.</p></div>
-                <Switch checked={coverEnabled} onCheckedChange={setCoverEnabled} />
-              </div>
+              <div className="flex items-center justify-between rounded-xl border p-4"><div><p className="font-semibold">Afficher la couverture</p><p className="text-sm text-muted-foreground">Active ou masque le visuel de couverture lorsqu’il est configuré.</p></div><Switch checked={coverEnabled} onCheckedChange={setCoverEnabled} /></div>
               <Field label="Image de couverture (URL)"><Input value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="https://…" /></Field>
-              <div className="grid gap-4 lg:grid-cols-2">
-                {verses.map((verse, index) => (
-                  <div key={index} className="space-y-3 rounded-xl border p-4">
-                    <p className="font-bold text-icc-violet">Verset {index + 1}</p>
-                    <Field label="Référence"><Input value={verse.ref} onChange={(e) => setVerses((v) => v.map((x, i) => i === index ? { ...x, ref: e.target.value } : x))} /></Field>
-                    <Field label="Texte"><Textarea rows={4} value={verse.text} onChange={(e) => setVerses((v) => v.map((x, i) => i === index ? { ...x, text: e.target.value } : x))} /></Field>
-                  </div>
-                ))}
-              </div>
+              <div className="grid gap-4 lg:grid-cols-2">{verses.map((verse, index) => <div key={index} className="space-y-3 rounded-xl border p-4"><p className="font-bold text-icc-violet">Verset {index + 1}</p><Field label="Référence"><Input value={verse.ref} onChange={(e) => setVerses((v) => v.map((x, i) => i === index ? { ...x, ref: e.target.value } : x))} /></Field><Field label="Texte"><Textarea rows={4} value={verse.text} onChange={(e) => setVerses((v) => v.map((x, i) => i === index ? { ...x, text: e.target.value } : x))} /></Field></div>)}</div>
               <Button onClick={() => saveIdentity.mutate()} disabled={saveIdentity.isPending}><Save className="size-4" />{saveIdentity.isPending ? "Enregistrement…" : "Enregistrer Identité & accueil"}</Button>
-            </CardContent>
-          </Card>
+            </CardContent></Card>
         </TabsContent>
 
         <TabsContent value="organisation" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Direction</CardTitle>
-              <CardDescription>La fonction organisationnelle est distincte des droits techniques. La configuration consolidée utilise un Responsable unique, sans fonction Adjoint.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Field label="Responsable">
-                <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={settings.data?.supervisor_member_id ?? ""} onChange={(e) => saveSupervisor.mutate(e.target.value || null)}>
-                  <option value="">Aucun responsable</option>
-                  {activeMembers.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+          <Card><CardHeader><CardTitle>Direction</CardTitle><CardDescription>Choisissez la structure de direction utilisée par la COM. Les fonctions affichées dans l’application découlent de cette configuration et restent distinctes des droits techniques.</CardDescription></CardHeader>
+            <CardContent className="space-y-5">
+              <Field label="Structure de direction">
+                <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={directionStructure} onChange={(e) => changeStructure(e.target.value as DirectionStructure)}>
+                  <option value="responsable_adjoint">Responsable + Adjoint + Référents</option>
+                  <option value="responsable_general_grands_groupes">Responsable général + Responsable Grands Groupes + Référents</option>
                 </select>
               </Field>
-            </CardContent>
-          </Card>
+              <div className="grid gap-4 md:grid-cols-2">
+                {memberSelect(directionStructure === "responsable_adjoint" ? "Responsable" : "Responsable général", rawSettings?.supervisor_member_id ?? "", "supervisor_member_id")}
+                {directionStructure === "responsable_adjoint"
+                  ? memberSelect("Adjoint", rawSettings?.adjoint_member_id ?? "", "adjoint_member_id")
+                  : memberSelect("Responsable Grands Groupes", rawSettings?.grands_groupes_member_id ?? "", "grands_groupes_member_id")}
+              </div>
+              <p className="text-sm text-muted-foreground">Les fonctions de direction sont pilotées ici et ne sont pas des rôles fixes du trombinoscope. Le statut Admin technique reste un droit séparé.</p>
+            </CardContent></Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Référents par pôle</CardTitle>
-              <CardDescription>Le référent est rattaché directement au pôle. Cette information est ensuite réutilisée dans le trombinoscope et les modules métier.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-2">
-              {activePoles.map((pole) => {
-                const referent = (members.data?.links ?? []).find((l) => l.pole_id === pole.id && l.is_referent);
-                return (
-                  <div key={pole.id} className="rounded-xl border p-4">
-                    <Label className="mb-2 block font-bold">{pole.name}</Label>
-                    <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={referent?.member_id ?? ""} onChange={(e) => saveReferent.mutate({ poleId: pole.id, memberId: e.target.value || null })}>
-                      <option value="">Aucun référent</option>
-                      {activeMembers.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
-                    </select>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
+          <Card><CardHeader><CardTitle>Référents par pôle</CardTitle><CardDescription>Une même personne peut être référente de plusieurs pôles. Le trombinoscope regroupera alors ses pôles sous une seule mention Référent.</CardDescription></CardHeader>
+            <CardContent className="grid gap-3 md:grid-cols-2">{activePoles.map((pole) => {
+              const referent = (members.data?.links ?? []).find((l) => l.pole_id === pole.id && l.is_referent);
+              return <div key={pole.id} className="rounded-xl border p-4"><Label className="mb-2 block font-bold">{pole.name}</Label><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={referent?.member_id ?? ""} onChange={(e) => saveReferent.mutate({ poleId: pole.id, memberId: e.target.value || null })}><option value="">Aucun référent</option>{activeMembers.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}</select></div>;
+            })}</CardContent></Card>
         </TabsContent>
 
         <TabsContent value="droits"><ComingSoon title="Accès & droits" text="La matrice Moi / Mon pôle / Tous / Interdit sera consolidée ici, avec les permissions sensibles séparées." /></TabsContent>
@@ -222,10 +180,5 @@ function Parametres() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="space-y-2"><Label>{label}</Label>{children}</div>;
-}
-
-function ComingSoon({ title, text }: { title: string; text: string }) {
-  return <Card><CardHeader><CardTitle>{title}</CardTitle><CardDescription>{text}</CardDescription></CardHeader><CardContent><p className="text-sm text-muted-foreground">Cette section sera activée après validation de sa logique afin de ne pas superposer l’ancien et le nouveau système.</p></CardContent></Card>;
-}
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div>; }
+function ComingSoon({ title, text }: { title: string; text: string }) { return <Card><CardHeader><CardTitle>{title}</CardTitle><CardDescription>{text}</CardDescription></CardHeader><CardContent><p className="text-sm text-muted-foreground">Cette section sera activée après validation de sa logique afin de ne pas superposer l’ancien et le nouveau système.</p></CardContent></Card>; }
