@@ -1,203 +1,28 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-
+import { useMemo, useState } from "react";
+import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, Clock3, Download, Users } from "lucide-react";
 import { AppShell, EmptyState } from "@/components/AppShell";
 import { useConflicts } from "@/components/ConflictsPanel";
 import { useCurrentRole } from "@/hooks/useAuth";
-import {
-  availabilityQuery,
-  formatDate,
-  membersQuery,
-  polesQuery,
-  programsQuery,
-  solicitationsQuery,
-  tasksQuery,
-  TASK_STATUS_LABEL,
-} from "@/lib/icc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
-
-export const Route = createFileRoute("/_authenticated/pilotage")({
-  head: () => ({
-    meta: [
-      { title: "Pilotage — COM ICC Le Mans" },
-      {
-        name: "description",
-        content:
-          "Indicateurs du pôle Communication ICC Le Mans : taux de réponse, charge par pôle, tâches, conflits et disponibilités.",
-      },
-      { property: "og:title", content: "Pilotage — COM ICC Le Mans" },
-      { property: "og:description", content: "Indicateurs de suivi et priorités du pôle Communication." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: Pilotage,
-});
-
-function Kpi({ value, label, hint }: { value: string | number; label: string; hint?: string }) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <p className="font-display text-2xl font-semibold text-icc-violet">{value}</p>
-        <p className="mt-0.5 text-xs font-semibold">{label}</p>
-        {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-      </CardContent>
-    </Card>
-  );
-}
-
-function Pilotage() {
-  const { isStaff, loading: roleLoading } = useCurrentRole();
-  const programs = useQuery(programsQuery);
-  const poles = useQuery(polesQuery);
-  const members = useQuery(membersQuery);
-  const tasks = useQuery(tasksQuery);
-  const solicitations = useQuery(solicitationsQuery);
-  const availability = useQuery(availabilityQuery);
-  const { conflicts } = useConflicts();
-
-  const today = new Date().toISOString().slice(0, 10);
-
-  const stats = useMemo(() => {
-    const rows = programs.data ?? [];
-    const upcoming = rows.filter((p) => (p.start_date ?? "") >= today);
-    const solicited = upcoming.reduce(
-      (acc, p) => acc + new Set(p.assignments.flatMap((a) => a.memberIds)).size,
-      0,
-    );
-    const answered = upcoming.reduce(
-      (acc, p) => acc + p.responses.filter((r) => r.status !== "pending").length,
-      0,
-    );
-    const perPole = new Map<string, number>();
-    for (const p of upcoming) {
-      for (const a of p.assignments) {
-        perPole.set(a.pole_id, (perPole.get(a.pole_id) ?? 0) + Math.max(a.memberIds.length, 1));
-      }
-    }
-    return {
-      upcoming,
-      responseRate: solicited > 0 ? Math.round((answered / solicited) * 100) : 0,
-      solicited,
-      answered,
-      perPole,
-    };
-  }, [programs.data, today]);
-
-  const taskCounts = useMemo(() => {
-    const counts: Record<string, number> = { todo: 0, doing: 0, done: 0 };
-    for (const t of tasks.data ?? []) counts[t.status] = (counts[t.status] ?? 0) + 1;
-    return counts;
-  }, [tasks.data]);
-
-  const pendingAvailability = (availability.data ?? []).filter((a) => a.status === "pending").length;
-  const pendingSolicitations = (solicitations.data ?? []).filter((s) => s.status === "pending").length;
-  const activeMembers = (members.data?.members ?? []).filter((m) => m.status === "active").length;
-
-  if (roleLoading || programs.isLoading) {
-    return (
-      <AppShell title="Pilotage">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" />
-          ))}
-        </div>
-      </AppShell>
-    );
-  }
-
-  if (!isStaff) {
-    return (
-      <AppShell title="Pilotage">
-        <EmptyState
-          title="Accès réservé"
-          description="Le pilotage est réservé à la responsable, aux adjoints, aux référents et à l'administrateur technique."
-        />
-      </AppShell>
-    );
-  }
-
-  const maxCharge = Math.max(1, ...[...stats.perPole.values()]);
-
-  return (
-    <AppShell title="Pilotage" subtitle="Indicateurs consolidés, calculés en temps réel">
-      <div className="space-y-5">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi value={stats.upcoming.length} label="Programmes à venir" hint="À partir d’aujourd’hui" />
-          <Kpi
-            value={`${stats.responseRate}%`}
-            label="Taux de réponse"
-            hint={`${stats.answered} réponse(s) sur ${stats.solicited} sollicitation(s)`}
-          />
-          <Kpi value={conflicts.length} label="Conflits détectés" hint="Chevauchements et couverture" />
-          <Kpi value={activeMembers} label="Équipiers actifs" />
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi value={taskCounts["todo"] ?? 0} label={TASK_STATUS_LABEL["todo"] ?? "À faire"} />
-          <Kpi value={taskCounts["doing"] ?? 0} label={TASK_STATUS_LABEL["doing"] ?? "En cours"} />
-          <Kpi value={pendingAvailability} label="Disponibilités à valider" />
-          <Kpi value={pendingSolicitations} label="Sollicitations en attente" />
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Charge par pôle (programmes à venir)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {(poles.data ?? []).length === 0 ? (
-                <EmptyState title="Aucun pôle" />
-              ) : (
-                (poles.data ?? []).map((pole) => {
-                  const value = stats.perPole.get(pole.id) ?? 0;
-                  return (
-                    <div key={pole.id}>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">{pole.name}</span>
-                        <span className="text-muted-foreground">{value} affectation(s)</span>
-                      </div>
-                      <Progress value={(value / maxCharge) * 100} className="mt-1 h-2" />
-                    </div>
-                  );
-                })
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Prochains programmes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {stats.upcoming.length === 0 ? (
-                <EmptyState title="Aucun programme à venir" />
-              ) : (
-                <ul className="divide-y divide-border">
-                  {stats.upcoming.slice(0, 8).map((p) => {
-                    const solicitedCount = new Set(p.assignments.flatMap((a) => a.memberIds)).size;
-                    const answeredCount = p.responses.filter((r) => r.status !== "pending").length;
-                    return (
-                      <li key={p.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                        <div>
-                          <p className="font-medium">{p.title}</p>
-                          <p className="text-xs text-muted-foreground">{formatDate(p.start_date)}</p>
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {answeredCount}/{solicitedCount} réponse(s)
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </AppShell>
-  );
-}
+import { availabilityQuery,formatDate,membersQuery,polesQuery,programsQuery,solicitationsQuery,tasksQuery } from "@/lib/icc";
+import { Badge } from "@/components/ui/badge"; import { Button } from "@/components/ui/button"; import { Card,CardContent,CardHeader,CardTitle } from "@/components/ui/card"; import { Input } from "@/components/ui/input"; import { Progress } from "@/components/ui/progress"; import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select"; import { Skeleton } from "@/components/ui/skeleton";
+export const Route=createFileRoute("/_authenticated/pilotage")({head:()=>({meta:[{title:"Pilotage — COM ICC Le Mans"},{name:"description",content:"Tableau de bord opérationnel du service Communication."}]}),component:Pilotage});
+type Period="7"|"30"|"90"|"180"|"365"|"custom";
+const iso=(d:Date)=>d.toISOString().slice(0,10); const plus=(date:string,days:number)=>{const d=new Date(`${date}T12:00:00`);d.setDate(d.getDate()+days);return iso(d)};
+function Kpi({value,label,hint,to}:{value:string|number;label:string;hint?:string;to?:string}){const body=<Card className={to?"h-full transition hover:border-icc-violet/50 hover:shadow-sm":"h-full"}><CardContent className="p-4"><p className="font-display text-2xl font-semibold text-icc-violet">{value}</p><p className="mt-0.5 text-xs font-semibold">{label}</p>{hint?<p className="text-xs text-muted-foreground">{hint}</p>:null}</CardContent></Card>;return to?<Link to={to as any}>{body}</Link>:body}
+function Pilotage(){const{isStaff,loading:roleLoading}=useCurrentRole();const programs=useQuery(programsQuery),poles=useQuery(polesQuery),members=useQuery(membersQuery),tasks=useQuery(tasksQuery),solicitations=useQuery(solicitationsQuery),availability=useQuery(availabilityQuery);const{conflicts}=useConflicts();const today=iso(new Date());const[period,setPeriod]=useState<Period>("30"),[pole,setPole]=useState("all"),[from,setFrom]=useState(today),[to,setTo]=useState(plus(today,30));
+ const range=useMemo(()=>period==="custom"?{from,to}:{from:today,to:plus(today,Number(period))},[period,from,to,today]);const activePoles=(poles.data??[]).filter(p=>!p.archived);const poleName=new Map((poles.data??[]).map(p=>[p.id,p.name]));const memberName=new Map((members.data?.members??[]).map(m=>[m.id,m.full_name]));
+ const stats=useMemo(()=>{const rows=(programs.data??[]).filter(p=>!p.archived&&p.start_date>=range.from&&p.start_date<=range.to&&(pole==="all"||p.assignments.some(a=>a.pole_id===pole)));const solicited=rows.reduce((n,p)=>n+new Set(p.assignments.flatMap(a=>a.memberIds)).size,0),answered=rows.reduce((n,p)=>n+p.responses.filter(r=>r.status!=="pending").length,0);const perPole=new Map<string,{programs:Set<string>;assignments:number;members:Set<string>}>();for(const p of rows)for(const a of p.assignments){if(pole!=="all"&&a.pole_id!==pole)continue;const x=perPole.get(a.pole_id)??{programs:new Set(),assignments:0,members:new Set()};x.programs.add(p.id);x.assignments+=Math.max(a.memberIds.length,1);a.memberIds.forEach(m=>x.members.add(m));perPole.set(a.pole_id,x)}const under=rows.filter(p=>p.assignments.length===0||p.assignments.some(a=>a.memberIds.length===0));const postponed=rows.filter(p=>p.status==="postponed");return{rows,solicited,answered,responseRate:solicited?Math.round(answered/solicited*100):0,perPole,under,postponed}},[programs.data,range,pole]);
+ const scopedSolicitations=(solicitations.data??[]).filter(s=>!s.archived&&(!s.event_date||(s.event_date>=range.from&&s.event_date<=range.to))&&(pole==="all"||s.target_pole_id===pole));const pendingSol=scopedSolicitations.filter(s=>s.status==="pending");const scopedTasks=(tasks.data??[]).filter(t=>{const due=(t as any).due_date;return(!due||(due>=range.from&&due<=range.to))});const overdue=scopedTasks.filter(t=>(t as any).status!=="done"&&(t as any).due_date&&(t as any).due_date<today);const pendingAvail=(availability.data??[]).filter(a=>a.status==="pending").length;const activeMembers=(members.data?.members??[]).filter(m=>m.status==="active").length;const training=(members.data?.members??[]).filter(m=>m.status==="active"&&!m.training_done&&!!m.training_start).length;const maxCharge=Math.max(1,...[...stats.perPole.values()].map(x=>x.assignments));
+ const priorities=[...stats.postponed.filter((p:any)=>!p.postponed_new_date_known||!p.postponed_new_start_date).map(p=>({kind:"Report",title:p.title,text:"Nouvelle date à renseigner",to:`/programme/${p.id}`})),...stats.under.map(p=>({kind:"Couverture",title:p.title,text:"Au moins un pôle sans équipier affecté",to:`/programme/${p.id}`})),...overdue.slice(0,6).map((t:any)=>({kind:"Tâche",title:t.title??"Tâche en retard",text:`Échéance ${formatDate(t.due_date)}`,to:"/a-faire"}))].slice(0,10);
+ if(roleLoading||programs.isLoading)return <AppShell title="Pilotage"><Skeleton className="h-96 rounded-xl"/></AppShell>;if(!isStaff)return <AppShell title="Pilotage"><EmptyState title="Accès réservé" description="Votre habilitation actuelle ne permet pas d’accéder au pilotage."/></AppShell>;
+ return <AppShell title="Pilotage" subtitle="Voir l’état du service, détecter les priorités et agir"><div className="space-y-6"><Card><CardContent className="flex flex-wrap items-end gap-3 p-4"><div className="min-w-44"><p className="mb-1 text-xs font-semibold">Période</p><Select value={period} onValueChange={v=>setPeriod(v as Period)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="7">7 jours</SelectItem><SelectItem value="30">30 jours</SelectItem><SelectItem value="90">3 mois</SelectItem><SelectItem value="180">6 mois</SelectItem><SelectItem value="365">1 an</SelectItem><SelectItem value="custom">Personnalisée</SelectItem></SelectContent></Select></div>{period==="custom"?<><Input type="date" className="w-auto" value={from} onChange={e=>setFrom(e.target.value)}/><Input type="date" className="w-auto" value={to} onChange={e=>setTo(e.target.value)}/></>:null}<div className="min-w-56"><p className="mb-1 text-xs font-semibold">Périmètre</p><Select value={pole} onValueChange={setPole}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">Tous les pôles</SelectItem>{activePoles.map(p=><SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></div><Button asChild variant="outline" className="ml-auto"><Link to="/exports"><Download className="size-4"/>Exports</Link></Button></CardContent></Card>
+ <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Kpi value={stats.rows.length} label="Programmes sur la période" hint={`${range.from} → ${range.to}`} to="/programmes"/><Kpi value={`${stats.responseRate}%`} label="Taux de réponse" hint={`${stats.answered}/${stats.solicited} réponses`}/><Kpi value={stats.under.length} label="Programmes à couvrir" hint="Pôle sans équipier" to="/programmes"/><Kpi value={conflicts.length} label="Conflits détectés" to="/conflits"/><Kpi value={pendingSol.length} label="Sollicitations en attente" to="/sollicitations"/><Kpi value={overdue.length} label="Tâches en retard" to="/a-faire"/><Kpi value={activeMembers} label="Membres actifs" hint={`${training} en formation`} to="/trombinoscope"/><Kpi value={pendingAvail} label="Disponibilités à valider" to="/disponibilites"/></div>
+ <Card><CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="size-5"/>À traiter en priorité</CardTitle></CardHeader><CardContent>{priorities.length===0?<div className="flex items-center gap-2 text-sm text-muted-foreground"><CheckCircle2 className="size-4"/>Aucune priorité critique détectée sur cette période.</div>:<div className="divide-y">{priorities.map((x,i)=><Link key={`${x.kind}-${i}`} to={x.to as any} className="flex items-center justify-between gap-3 py-3 hover:text-icc-violet"><div><Badge variant="outline" className="mb-1">{x.kind}</Badge><p className="font-semibold">{x.title}</p><p className="text-sm text-muted-foreground">{x.text}</p></div><ArrowRight className="size-4 shrink-0"/></Link>)}</div>}</CardContent></Card>
+ <div className="grid gap-4 lg:grid-cols-2"><Card><CardHeader><CardTitle>Couverture des prochains programmes</CardTitle></CardHeader><CardContent>{stats.rows.length===0?<EmptyState title="Aucun programme"/>:<div className="divide-y">{stats.rows.slice(0,10).map(p=>{const asked=new Set(p.assignments.flatMap(a=>a.memberIds)).size,ans=p.responses.filter(r=>r.status!=="pending").length;return <Link key={p.id} to="/programme/$id" params={{id:p.id}} className="block py-3 hover:text-icc-violet"><div className="flex justify-between gap-3"><div><p className="font-semibold">{p.title}</p><p className="text-xs text-muted-foreground">{formatDate(p.start_date)} · {p.assignments.length} pôle(s)</p></div><Badge variant={p.assignments.some(a=>!a.memberIds.length)?"destructive":"secondary"}>{ans}/{asked} réponses</Badge></div></Link>})}</div>}</CardContent></Card><Card><CardHeader><CardTitle className="flex items-center gap-2"><CalendarClock className="size-5"/>Programmes reportés</CardTitle></CardHeader><CardContent>{stats.postponed.length===0?<p className="text-sm text-muted-foreground">Aucun programme reporté sur la période.</p>:<div className="divide-y">{stats.postponed.map((p:any)=><Link key={p.id} to="/programme/$id" params={{id:p.id}} className="block py-3"><p className="font-semibold">{p.title}</p><p className="text-sm text-muted-foreground">Date initiale : {formatDate(p.start_date)}</p><p className="text-sm font-semibold text-blue-700">Nouvelle date : {p.postponed_new_date_known&&p.postponed_new_start_date?formatDate(p.postponed_new_start_date):"à renseigner"}</p></Link>)}</div>}</CardContent></Card></div>
+ <Card><CardHeader><CardTitle>Charge par pôle</CardTitle></CardHeader><CardContent className="space-y-4">{activePoles.filter(p=>pole==="all"||p.id===pole).map(p=>{const x=stats.perPole.get(p.id)??{programs:new Set<string>(),assignments:0,members:new Set<string>()};return <div key={p.id}><div className="flex flex-wrap justify-between gap-2 text-sm"><Link to="/pole/$id" params={{id:p.id}} className="font-semibold hover:text-icc-violet">{p.name}</Link><span className="text-muted-foreground">{x.programs.size} programme(s) · {x.assignments} affectation(s) · {x.members.size} membre(s)</span></div><Progress value={x.assignments/maxCharge*100} className="mt-1 h-2"/></div>})}</CardContent></Card>
+ <div className="grid gap-4 lg:grid-cols-2"><Card><CardHeader><CardTitle>Sollicitations & réponses</CardTitle></CardHeader><CardContent><div className="grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-muted p-3"><b>{scopedSolicitations.length}</b><p className="text-xs">Total</p></div><div className="rounded-xl bg-muted p-3"><b>{pendingSol.length}</b><p className="text-xs">En attente</p></div><div className="rounded-xl bg-muted p-3"><b>{scopedSolicitations.filter(s=>s.status!=="pending").length}</b><p className="text-xs">Traitées</p></div></div><Button asChild variant="link" className="mt-2 px-0"><Link to="/sollicitations">Voir les sollicitations<ArrowRight className="size-4"/></Link></Button></CardContent></Card><Card><CardHeader><CardTitle>Tâches en retard</CardTitle></CardHeader><CardContent>{overdue.length===0?<p className="text-sm text-muted-foreground">Aucune tâche en retard.</p>:<div className="divide-y">{overdue.slice(0,8).map((t:any)=><div key={t.id} className="py-2"><p className="font-semibold">{t.title??t.label??"Tâche"}</p><p className="text-xs text-muted-foreground">Échéance {formatDate(t.due_date)}</p></div>)}</div>}<Button asChild variant="link" className="px-0"><Link to="/a-faire">Ouvrir À faire<ArrowRight className="size-4"/></Link></Button></CardContent></Card></div>
+ <Card><CardHeader><CardTitle className="flex items-center gap-2"><Users className="size-5"/>Répartition de la mobilisation</CardTitle></CardHeader><CardContent>{stats.rows.length===0?<p className="text-sm text-muted-foreground">Aucune mobilisation sur la période.</p>:<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{[...new Set(stats.rows.flatMap(p=>p.assignments.flatMap(a=>a.memberIds)))].map(mid=>{const count=stats.rows.filter(p=>p.assignments.some(a=>a.memberIds.includes(mid))).length;return <div key={mid} className="rounded-xl border p-3"><p className="font-semibold">{memberName.get(mid)??"Membre"}</p><p className="text-xs text-muted-foreground">{count} programme(s) sur la période</p></div>})}</div>}</CardContent></Card>
+ <Card><CardHeader><CardTitle>Lecture de tendance</CardTitle></CardHeader><CardContent><div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl bg-muted/50 p-4"><Clock3 className="mb-2 size-4"/><b>{stats.responseRate}%</b><p className="text-xs text-muted-foreground">Réponses sur la période sélectionnée</p></div><div className="rounded-xl bg-muted/50 p-4"><AlertTriangle className="mb-2 size-4"/><b>{stats.under.length}</b><p className="text-xs text-muted-foreground">Programmes nécessitant une couverture</p></div><div className="rounded-xl bg-muted/50 p-4"><Users className="mb-2 size-4"/><b>{stats.perPole.size}</b><p className="text-xs text-muted-foreground">Pôles mobilisés</p></div></div><p className="mt-3 text-xs text-muted-foreground">Ces indicateurs utilisent une source unique : programmes, affectations, réponses, tâches et sollicitations existantes. Aucun chiffre parallèle n’est enregistré.</p></CardContent></Card>
+ </div></AppShell>}
