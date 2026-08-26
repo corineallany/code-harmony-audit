@@ -1,15 +1,148 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Archive, ArchiveRestore, Copy, Pencil, Plus } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Archive, ArchiveRestore, Copy, Pencil, Plus, Files } from "lucide-react";
 import { toast } from "sonner";
-import { AppShell, EmptyState } from "@/components/AppShell"; import { Field,newId } from "@/components/admin/form-kit"; import { useCurrentRole } from "@/hooks/useAuth"; import { supabase } from "@/integrations/supabase/client"; import { logAction,polesQuery,programModelsQuery,type ProgramModel } from "@/lib/icc"; import { Badge } from "@/components/ui/badge"; import { Button } from "@/components/ui/button"; import { Card,CardContent } from "@/components/ui/card"; import { Dialog,DialogContent,DialogFooter,DialogHeader,DialogTitle } from "@/components/ui/dialog"; import { Input } from "@/components/ui/input"; import { Skeleton } from "@/components/ui/skeleton"; import { Textarea } from "@/components/ui/textarea";
-export const Route=createFileRoute("/_authenticated/modeles")({head:()=>({meta:[{title:"Modèles de programme — COM ICC Le Mans"},{name:"description",content:"Modèles réutilisables : pôles et tâches/checklist préremplies."}]}),component:Modeles});
-type Draft={id:string|null;name:string;description:string;program_type:string;format:string;audience:string;tasks:string;poles:string[];checklist:string};const EMPTY:Draft={id:null,name:"",description:"",program_type:"",format:"",audience:"",tasks:"",poles:[],checklist:""};const arr=(v:unknown):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==="string"):[];
-function Modeles(){const models=useQuery(programModelsQuery),poles=useQuery(polesQuery),qc=useQueryClient();const{isStaff,member}=useCurrentRole();const[draft,setDraft]=useState<Draft|null>(null),[arch,setArch]=useState(false);const poleName=new Map((poles.data??[]).map(p=>[p.id,p.name]));const rows=(models.data??[]).filter(m=>arch?m.archived:!m.archived);const refresh=()=>qc.invalidateQueries({queryKey:["program-models"]});
-const save=useMutation({mutationFn:async(v:Draft)=>{const name=v.name.trim();if(!name)throw new Error("Le nom du modèle est obligatoire.");const checklist=v.checklist.split("\n").map(x=>x.trim()).filter(Boolean);const payload={name,description:v.description.trim()||null,program_type:v.program_type.trim()||null,format:v.format.trim()||null,audience:v.audience.trim()||null,tasks:v.tasks.trim()||null,poles:v.poles,checklist};const r=v.id?await supabase.from("program_models").update(payload).eq("id",v.id):await supabase.from("program_models").insert({id:newId("mdl"),...payload});if(r.error)throw new Error(r.error.message);await logAction({action:v.id?"modele_modifie":"modele_cree",entity:"program_model",entityId:v.id??name,detail:name,actorName:member?.full_name})},onSuccess:()=>{toast.success("Modèle enregistré");setDraft(null);refresh()},onError:(e:Error)=>toast.error(e.message)});
-const toggle=useMutation({mutationFn:async(m:ProgramModel)=>{const{error}=await supabase.from("program_models").update({archived:!m.archived}).eq("id",m.id);if(error)throw error},onSuccess:refresh});
-const instantiate=useMutation({mutationFn:async(m:ProgramModel)=>{const id=newId("prg");let{error}=await supabase.from("programs").insert({id,title:m.name,description:m.description,program_type:m.program_type,format:m.format,audience:m.audience,status:"draft",general_note:m.tasks});if(error)throw error;for(const pid of arr(m.poles)){const r=await supabase.from("program_assignments").insert({program_id:id,pole_id:pid,tasks:m.tasks});if(r.error)throw r.error}const list=arr(m.checklist);if(list.length){/* Source unique: la checklist du modèle devient directement de vraies tâches. */const r=await supabase.from("tasks").insert(list.map((title,index)=>({title,program_id:id,pole_id:arr(m.poles).length===1?arr(m.poles)[0]:null,status:"todo",priority:"normale",detail:null,due_date:null,assignee_member_id:null})));if(r.error)throw r.error}await logAction({action:"programme_cree_depuis_modele",entity:"program",entityId:id,detail:`${m.name} · ${list.length} tâche(s) générée(s)`,actorName:member?.full_name})},onSuccess:()=>{toast.success("Programme créé avec ses tâches");qc.invalidateQueries({queryKey:["programs"]});qc.invalidateQueries({queryKey:["tasks"]})},onError:(e:Error)=>toast.error(e.message)});
-return <AppShell title="Modèles de programme" subtitle="Une seule source : la checklist d'un modèle génère les tâches réelles du programme" actions={<><Button variant="outline" size="sm" onClick={()=>setArch(v=>!v)}>{arch?"Voir les modèles actifs":"Voir les archives"}</Button>{isStaff?<Button size="sm" onClick={()=>setDraft({...EMPTY})}><Plus className="mr-1 size-4"/>Nouveau modèle</Button>:null}</>}>
-{models.isLoading?<Skeleton className="h-60 rounded-xl"/>:rows.length===0?<EmptyState title={arch?"Aucun modèle archivé":"Aucun modèle"}/>:<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{rows.map(m=><Card key={m.id}><CardContent className="space-y-3 p-5"><div className="flex justify-between"><b>{m.name}</b>{m.program_type?<Badge variant="secondary">{m.program_type}</Badge>:null}</div>{m.description?<p className="text-sm text-muted-foreground">{m.description}</p>:null}<div className="flex flex-wrap gap-1">{arr(m.poles).map(id=><Badge key={id} variant="outline">{poleName.get(id)??id}</Badge>)}</div>{arr(m.checklist).length?<div><p className="mb-1 text-xs font-semibold">Tâches / checklist générées</p><ul className="space-y-1 text-xs text-muted-foreground">{arr(m.checklist).map(x=><li key={x}>□ {x}</li>)}</ul></div>:null}{isStaff?<div className="flex flex-wrap gap-2"><Button size="sm" disabled={instantiate.isPending||m.archived} onClick={()=>instantiate.mutate(m)}><Copy className="mr-1 size-4"/>Créer un programme</Button><Button size="sm" variant="outline" onClick={()=>setDraft({id:m.id,name:m.name,description:m.description??"",program_type:m.program_type??"",format:m.format??"",audience:m.audience??"",tasks:m.tasks??"",poles:arr(m.poles),checklist:arr(m.checklist).join("\n")})}><Pencil className="mr-1 size-4"/>Modifier</Button><Button size="sm" variant="ghost" onClick={()=>toggle.mutate(m)}>{m.archived?<ArchiveRestore className="mr-1 size-4"/>:<Archive className="mr-1 size-4"/>}{m.archived?"Restaurer":"Archiver"}</Button></div>:null}</CardContent></Card>)}</div>}
-<Dialog open={!!draft} onOpenChange={o=>{if(!o)setDraft(null)}}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg"><DialogHeader><DialogTitle>{draft?.id?"Modifier le modèle":"Nouveau modèle"}</DialogTitle></DialogHeader>{draft?<div className="space-y-3"><Field label="Nom du modèle"><Input value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></Field><Field label="Description"><Textarea value={draft.description} onChange={e=>setDraft({...draft,description:e.target.value})}/></Field><div className="grid gap-2 sm:grid-cols-3"><Field label="Type"><Input value={draft.program_type} onChange={e=>setDraft({...draft,program_type:e.target.value})}/></Field><Field label="Format"><Input value={draft.format} onChange={e=>setDraft({...draft,format:e.target.value})}/></Field><Field label="Public"><Input value={draft.audience} onChange={e=>setDraft({...draft,audience:e.target.value})}/></Field></div><Field label="Note / consignes générales"><Textarea value={draft.tasks} onChange={e=>setDraft({...draft,tasks:e.target.value})}/></Field><Field label="Pôles mobilisés"><div className="flex flex-wrap gap-1">{(poles.data??[]).filter(p=>!p.archived).map(p=>{const on=draft.poles.includes(p.id);return <button key={p.id} type="button" onClick={()=>setDraft({...draft,poles:on?draft.poles.filter(x=>x!==p.id):[...draft.poles,p.id]})} className={on?"rounded-full bg-icc-violet px-3 py-1 text-xs font-bold text-white":"rounded-full border px-3 py-1 text-xs"}>{p.name}</button>})}</div></Field><Field label="Tâches / checklist (une ligne par tâche)"><Textarea rows={6} value={draft.checklist} onChange={e=>setDraft({...draft,checklist:e.target.value})}/><p className="mt-1 text-xs text-muted-foreground">À la création d'un programme, chaque ligne devient une vraie tâche. Il n'y a plus de checklist parallèle.</p></Field></div>:null}<DialogFooter><Button variant="ghost" onClick={()=>setDraft(null)}>Annuler</Button><Button disabled={save.isPending} onClick={()=>draft&&save.mutate(draft)}>Enregistrer</Button></DialogFooter></DialogContent></Dialog></AppShell>}
+import { AppShell, EmptyState } from "@/components/AppShell";
+import { Field, newId } from "@/components/admin/form-kit";
+import { useCurrentRole } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { logAction, polesQuery, programModelsQuery, type ProgramModel } from "@/lib/icc";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+
+export const Route = createFileRoute("/_authenticated/modeles")({
+  head: () => ({ meta: [{ title: "Modèles de programme — COM ICC Le Mans" }, { name: "description", content: "Modèles réutilisables : besoins humains, échéances, pôles et tâches enrichies." }] }),
+  component: Modeles,
+});
+
+type RichTask = { title: string; pole_id?: string | null; priority?: string; due_offset_days?: number | null };
+type Draft = {
+  id: string | null; name: string; description: string; program_type: string; format: string; audience: string;
+  tasks: string; poles: string[]; checklist: string; response_deadline_days: string;
+  staffing: Record<string, number>; assignment_rules: string; notification_rules: string[];
+};
+const EMPTY: Draft = { id: null, name: "", description: "", program_type: "", format: "", audience: "", tasks: "", poles: [], checklist: "", response_deadline_days: "", staffing: {}, assignment_rules: "", notification_rules: [] };
+const arr = (v: unknown): string[] => Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+const obj = (v: unknown): Record<string, any> => v && typeof v === "object" && !Array.isArray(v) ? v as Record<string, any> : {};
+const modelAny = (m: ProgramModel) => m as any;
+
+function parseTasks(text: string, poles: Array<{ id: string; name: string }>): RichTask[] {
+  const byName = new Map(poles.map(p => [p.name.trim().toLowerCase(), p.id]));
+  return text.split("\n").map(x => x.trim()).filter(Boolean).map(line => {
+    const [titleRaw, poleRaw, priorityRaw, offsetRaw] = line.split("|").map(x => x?.trim());
+    const title = titleRaw || line;
+    const pole_id = poleRaw ? (byName.get(poleRaw.toLowerCase()) ?? poleRaw) : null;
+    const priority = ["basse", "normale", "haute"].includes((priorityRaw || "").toLowerCase()) ? priorityRaw!.toLowerCase() : "normale";
+    const m = (offsetRaw || "").match(/^J([+-]\d+|0)$/i);
+    const due_offset_days = m ? Number(m[1]) : null;
+    return { title, pole_id, priority, due_offset_days };
+  });
+}
+
+function Modeles() {
+  const models = useQuery(programModelsQuery), poles = useQuery(polesQuery), qc = useQueryClient();
+  const { isStaff, member } = useCurrentRole();
+  const [draft, setDraft] = useState<Draft | null>(null), [arch, setArch] = useState(false);
+  const poleName = new Map((poles.data ?? []).map(p => [p.id, p.name]));
+  const activePoles = (poles.data ?? []).filter(p => !p.archived);
+  const rows = (models.data ?? []).filter(m => arch ? m.archived : !m.archived);
+  const refresh = () => qc.invalidateQueries({ queryKey: ["program-models"] });
+
+  const save = useMutation({
+    mutationFn: async (v: Draft) => {
+      const name = v.name.trim(); if (!name) throw new Error("Le nom du modèle est obligatoire.");
+      const rich = parseTasks(v.checklist, activePoles);
+      const checklist = rich.map(t => t.title);
+      const payload: any = {
+        name, description: v.description.trim() || null, program_type: v.program_type.trim() || null,
+        format: v.format.trim() || null, audience: v.audience.trim() || null, tasks: v.tasks.trim() || null,
+        poles: v.poles, checklist, task_templates: rich,
+        response_deadline_days: v.response_deadline_days === "" ? null : Math.max(0, Number(v.response_deadline_days)),
+        staffing_requirements: v.staffing, assignment_rules: v.assignment_rules.trim() || null,
+        notification_rules: v.notification_rules,
+      };
+      const table: any = supabase.from("program_models");
+      if (v.id) {
+        const current = modelAny((models.data ?? []).find(m => m.id === v.id)!);
+        payload.version = Number(current?.version || 1) + 1;
+        const { error } = await table.update(payload).eq("id", v.id); if (error) throw error;
+      } else {
+        const { error } = await table.insert({ id: newId("mdl"), version: 1, ...payload }); if (error) throw error;
+      }
+      await logAction({ action: v.id ? "modele_modifie" : "modele_cree", entity: "program_model", entityId: v.id ?? name, detail: name, actorName: member?.full_name });
+    },
+    onSuccess: () => { toast.success("Modèle enregistré"); setDraft(null); refresh(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const toggle = useMutation({ mutationFn: async (m: ProgramModel) => { const { error } = await supabase.from("program_models").update({ archived: !m.archived }).eq("id", m.id); if (error) throw error; }, onSuccess: refresh });
+
+  const duplicate = useMutation({
+    mutationFn: async (m: ProgramModel) => {
+      const mm = modelAny(m); const id = newId("mdl");
+      const payload: any = { ...mm, id, name: `${m.name} — copie`, archived: false, version: 1, created_at: undefined, updated_at: undefined };
+      delete payload.created_at; delete payload.updated_at;
+      const { error } = await (supabase.from("program_models") as any).insert(payload); if (error) throw error;
+      await logAction({ action: "modele_duplique", entity: "program_model", entityId: id, detail: m.name, actorName: member?.full_name });
+    }, onSuccess: () => { toast.success("Modèle dupliqué"); refresh(); }, onError: (e: Error) => toast.error(e.message)
+  });
+
+  const instantiate = useMutation({
+    mutationFn: async (m: ProgramModel) => {
+      const mm = modelAny(m); const id = newId("prg"); const programTable: any = supabase.from("programs");
+      let { error } = await programTable.insert({
+        id, title: m.name, description: m.description, program_type: m.program_type, format: m.format, audience: m.audience,
+        status: "draft", general_note: m.tasks, response_deadline_offset_days: mm.response_deadline_days ?? null,
+        notification_rules: mm.notification_rules ?? [],
+      }); if (error) throw error;
+      const staffing = obj(mm.staffing_requirements);
+      for (const pid of arr(m.poles)) {
+        const r = await (supabase.from("program_assignments") as any).insert({ program_id: id, pole_id: pid, tasks: m.tasks, required_count: Number(staffing[pid] || 0) || null, assignment_rule: mm.assignment_rules ?? null }); if (r.error) throw r.error;
+      }
+      const rich: RichTask[] = Array.isArray(mm.task_templates) && mm.task_templates.length ? mm.task_templates : arr(m.checklist).map((title: string) => ({ title, priority: "normale", due_offset_days: null, pole_id: arr(m.poles).length === 1 ? arr(m.poles)[0] : null }));
+      if (rich.length) {
+        const r = await (supabase.from("tasks") as any).insert(rich.map(t => ({ title: t.title, program_id: id, pole_id: t.pole_id || (arr(m.poles).length === 1 ? arr(m.poles)[0] : null), status: "todo", priority: t.priority || "normale", detail: null, due_date: null, assignee_member_id: null })));
+        if (r.error) throw r.error;
+      }
+      await logAction({ action: "programme_cree_depuis_modele", entity: "program", entityId: id, detail: `${m.name} · ${rich.length} tâche(s) · besoins préremplis`, actorName: member?.full_name });
+    },
+    onSuccess: () => { toast.success("Programme créé avec besoins et tâches"); qc.invalidateQueries({ queryKey: ["programs"] }); qc.invalidateQueries({ queryKey: ["tasks"] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const editDraft = (m: ProgramModel): Draft => {
+    const mm = modelAny(m); const rich: RichTask[] = Array.isArray(mm.task_templates) && mm.task_templates.length ? mm.task_templates : arr(m.checklist).map(title => ({ title }));
+    return {
+      id: m.id, name: m.name, description: m.description ?? "", program_type: m.program_type ?? "", format: m.format ?? "", audience: m.audience ?? "", tasks: m.tasks ?? "", poles: arr(m.poles),
+      checklist: rich.map(t => [t.title, t.pole_id ? poleName.get(t.pole_id) ?? t.pole_id : "", t.priority && t.priority !== "normale" ? t.priority : "", t.due_offset_days != null ? `J${t.due_offset_days >= 0 ? "+" : ""}${t.due_offset_days}` : ""].filter(Boolean).join(" | ")).join("\n"),
+      response_deadline_days: mm.response_deadline_days == null ? "" : String(mm.response_deadline_days), staffing: obj(mm.staffing_requirements), assignment_rules: mm.assignment_rules ?? "", notification_rules: arr(mm.notification_rules),
+    };
+  };
+
+  return <AppShell title="Modèles de programme" subtitle="Préparez besoins humains, échéances, affectations et tâches avant la création du programme" actions={<><Button variant="outline" size="sm" onClick={() => setArch(v => !v)}>{arch ? "Voir les modèles actifs" : "Voir les archives"}</Button>{isStaff ? <Button size="sm" onClick={() => setDraft({ ...EMPTY })}><Plus className="mr-1 size-4" />Nouveau modèle</Button> : null}</>}>
+    {models.isLoading ? <Skeleton className="h-60 rounded-xl" /> : rows.length === 0 ? <EmptyState title={arch ? "Aucun modèle archivé" : "Aucun modèle"} /> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{rows.map(m => { const mm = modelAny(m); const staffing = obj(mm.staffing_requirements); return <Card key={m.id}><CardContent className="space-y-3 p-5"><div className="flex justify-between gap-2"><div><b>{m.name}</b><p className="text-[11px] text-muted-foreground">Version {mm.version ?? 1}</p></div>{m.program_type ? <Badge variant="secondary">{m.program_type}</Badge> : null}</div>{m.description ? <p className="text-sm text-muted-foreground">{m.description}</p> : null}
+      <div><p className="mb-1 text-xs font-semibold">Pôles mobilisés / besoins</p><div className="flex flex-wrap gap-1">{arr(m.poles).map(pid => <Badge key={pid} variant="outline">{poleName.get(pid) ?? pid}{staffing[pid] ? ` · ${staffing[pid]} pers.` : ""}</Badge>)}</div></div>
+      {mm.response_deadline_days != null ? <p className="text-xs"><b>Réponse :</b> J-{mm.response_deadline_days}</p> : null}
+      {mm.assignment_rules ? <p className="text-xs"><b>Règle d’affectation :</b> {mm.assignment_rules}</p> : null}
+      {arr(m.checklist).length ? <div><p className="mb-1 text-xs font-semibold">Tâches générées</p><ul className="space-y-1 text-xs text-muted-foreground">{arr(m.checklist).slice(0, 6).map(x => <li key={x}>□ {x}</li>)}</ul>{arr(m.checklist).length > 6 ? <p className="mt-1 text-[11px] text-muted-foreground">+ {arr(m.checklist).length - 6} autre(s)</p> : null}</div> : null}
+      {isStaff ? <div className="flex flex-wrap gap-2"><Button size="sm" disabled={instantiate.isPending || m.archived} onClick={() => instantiate.mutate(m)}><Copy className="mr-1 size-4" />Créer un programme</Button><Button size="sm" variant="outline" onClick={() => duplicate.mutate(m)}><Files className="mr-1 size-4" />Dupliquer</Button><Button size="sm" variant="outline" onClick={() => setDraft(editDraft(m))}><Pencil className="mr-1 size-4" />Modifier</Button><Button size="sm" variant="ghost" onClick={() => toggle.mutate(m)}>{m.archived ? <ArchiveRestore className="mr-1 size-4" /> : <Archive className="mr-1 size-4" />}{m.archived ? "Restaurer" : "Archiver"}</Button></div> : null}</CardContent></Card> })}</div>}
+
+    <Dialog open={!!draft} onOpenChange={o => { if (!o) setDraft(null) }}><DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>{draft?.id ? "Modifier le modèle" : "Nouveau modèle"}</DialogTitle></DialogHeader>{draft ? <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2"><Field label="Nom du modèle"><Input value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} /></Field><Field label="Réponse attendue (jours avant)"><Input type="number" min="0" placeholder="Ex. 3" value={draft.response_deadline_days} onChange={e => setDraft({ ...draft, response_deadline_days: e.target.value })} /></Field></div>
+      <Field label="Description"><Textarea value={draft.description} onChange={e => setDraft({ ...draft, description: e.target.value })} /></Field>
+      <div className="grid gap-2 sm:grid-cols-3"><Field label="Type"><Input value={draft.program_type} onChange={e => setDraft({ ...draft, program_type: e.target.value })} /></Field><Field label="Format"><Input value={draft.format} onChange={e => setDraft({ ...draft, format: e.target.value })} /></Field><Field label="Public"><Input value={draft.audience} onChange={e => setDraft({ ...draft, audience: e.target.value })} /></Field></div>
+      <Field label="Note / consignes générales"><Textarea value={draft.tasks} onChange={e => setDraft({ ...draft, tasks: e.target.value })} /></Field>
+      <Field label="Pôles mobilisés et besoin humain"><div className="space-y-2">{activePoles.map(p => { const on = draft.poles.includes(p.id); return <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg border p-2"><button type="button" onClick={() => setDraft({ ...draft, poles: on ? draft.poles.filter(x => x !== p.id) : [...draft.poles, p.id] })} className={on ? "rounded-full bg-icc-violet px-3 py-1 text-xs font-bold text-white" : "rounded-full border px-3 py-1 text-xs"}>{p.name}</button>{on ? <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">Personnes nécessaires</span><Input className="w-20" type="number" min="0" value={draft.staffing[p.id] ?? 0} onChange={e => setDraft({ ...draft, staffing: { ...draft.staffing, [p.id]: Number(e.target.value) } })} /></div> : null}</div> })}</div></Field>
+      <Field label="Règles d’affectation"><Textarea rows={2} placeholder="Ex. au moins 1 référent Photo ; 1 autonome + 1 personne en formation" value={draft.assignment_rules} onChange={e => setDraft({ ...draft, assignment_rules: e.target.value })} /></Field>
+      <Field label="Tâches modèles enrichies"><Textarea rows={7} value={draft.checklist} onChange={e => setDraft({ ...draft, checklist: e.target.value })} /><p className="mt-1 text-xs text-muted-foreground">Une ligne par tâche. Format optionnel : <b>Titre | Pôle | priorité | J-2</b>. Exemple : “Préparer les visuels | Stories | haute | J-2”.</p></Field>
+      <Field label="Notifications par défaut"><div className="flex flex-wrap gap-2">{[{k:"response_deadline",l:"Rappel date limite"},{k:"program_reminder",l:"Rappel avant programme"},{k:"staffing_alert",l:"Alerte sous-effectif"}].map(x => { const on = draft.notification_rules.includes(x.k); return <button key={x.k} type="button" onClick={() => setDraft({ ...draft, notification_rules: on ? draft.notification_rules.filter(v => v !== x.k) : [...draft.notification_rules, x.k] })} className={on ? "rounded-full bg-icc-violet px-3 py-1 text-xs font-bold text-white" : "rounded-full border px-3 py-1 text-xs"}>{x.l}</button> })}</div></Field>
+      <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Les modifications du modèle ne changent jamais rétroactivement les programmes déjà créés. Elles s’appliquent uniquement aux prochains programmes.</p>
+    </div> : null}<DialogFooter><Button variant="ghost" onClick={() => setDraft(null)}>Annuler</Button><Button disabled={save.isPending} onClick={() => draft && save.mutate(draft)}>Enregistrer</Button></DialogFooter></DialogContent></Dialog>
+  </AppShell>;
+}
