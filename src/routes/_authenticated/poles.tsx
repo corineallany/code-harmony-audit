@@ -1,114 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-
+import { useMemo, useState } from "react";
+import { Layers3, Users } from "lucide-react";
 import { AppShell, EmptyState } from "@/components/AppShell";
-import { membersQuery, polesQuery } from "@/lib/icc";
+import { membersQuery, polesQuery, settingsQuery } from "@/lib/icc";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const Route = createFileRoute("/_authenticated/poles")({
-  head: () => ({
-    meta: [
-      { title: "Pôles — COM ICC Le Mans" },
-      {
-        name: "description",
-        content: "Organisation en pôles du service Communication ICC Le Mans : groupes, référents et effectifs.",
-      },
-      { property: "og:title", content: "Pôles — COM ICC Le Mans" },
-      { property: "og:description", content: "Groupes, référents et effectifs de chaque pôle." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: Poles,
-});
-
-function Poles() {
-  const poles = useQuery(polesQuery);
-  const members = useQuery(membersQuery);
-
-  const byPole = useMemo(() => {
-    const memberName = new Map((members.data?.members ?? []).map((m) => [m.id, m.full_name]));
-    const map = new Map<string, { name: string; referent: boolean }[]>();
-    for (const link of members.data?.links ?? []) {
-      map.set(link.pole_id, [
-        ...(map.get(link.pole_id) ?? []),
-        { name: memberName.get(link.member_id) ?? link.member_id, referent: link.is_referent },
-      ]);
-    }
-    return map;
-  }, [members.data]);
-
-  const groups = useMemo(() => {
-    const grouped = new Map<string, typeof poles.data>();
-    for (const pole of poles.data ?? []) {
-      const key = pole.pole_group ?? "Autres pôles";
-      grouped.set(key, [...((grouped.get(key) ?? []) as NonNullable<typeof poles.data>), pole]);
-    }
-    return [...grouped.entries()];
-  }, [poles.data]);
-
-  if (poles.isLoading) {
-    return (
-      <AppShell title="Pôles">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-32 rounded-xl" />
-          ))}
-        </div>
-      </AppShell>
-    );
-  }
-
-  return (
-    <AppShell title="Pôles" subtitle="Organisation du service">
-      {groups.length === 0 ? (
-        <EmptyState title="Aucun pôle enregistré" />
-      ) : (
-        <div className="space-y-8">
-          {groups.map(([group, list]) => (
-            <section key={group}>
-              <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-                {group}
-              </h2>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {(list ?? []).map((pole) => {
-                  const people = byPole.get(pole.id) ?? [];
-                  return (
-                    <Card key={pole.id} className={pole.archived ? "opacity-60" : ""}>
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <CardTitle className="text-base">{pole.name}</CardTitle>
-                          <Badge variant="secondary">{people.length}</Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        {pole.description ? (
-                          <p className="text-sm text-muted-foreground">{pole.description}</p>
-                        ) : null}
-                        {people.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">Aucun équipier affecté.</p>
-                        ) : (
-                          <ul className="space-y-1 text-sm">
-                            {people.map((p) => (
-                              <li key={p.name} className={p.referent ? "font-semibold" : ""}>
-                                {p.name}
-                                {p.referent ? " · référent" : ""}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
-    </AppShell>
-  );
+export const Route=createFileRoute("/_authenticated/poles")({head:()=>({meta:[{title:"Pôles — COM ICC Le Mans"}]}),component:Poles});
+type Person={id:string;name:string;referent:boolean;status:string|null};
+function Poles(){
+ const poles=useQuery(polesQuery),members=useQuery(membersQuery),settings=useQuery(settingsQuery); const [view,setView]=useState<"all"|"groups">("all");
+ const active=useMemo(()=>(poles.data??[]).filter(p=>!p.archived).sort((a,b)=>a.name.localeCompare(b.name,"fr",{sensitivity:"base"})),[poles.data]);
+ const byPole=useMemo(()=>{const memberById=new Map((members.data?.members??[]).filter(m=>m.status==="active").map(m=>[m.id,m]));const map=new Map<string,Person[]>();for(const l of members.data?.links??[]){const m=memberById.get(l.member_id);if(!m)continue;map.set(l.pole_id,[...(map.get(l.pole_id)??[]),{id:m.id,name:m.full_name,referent:l.is_referent,status:(m as any).member_status??null}]);}for(const[id,list]of map)map.set(id,list.sort((a,b)=>Number(b.referent)-Number(a.referent)||a.name.localeCompare(b.name,"fr",{sensitivity:"base"})));return map},[members.data]);
+ const groupsActive=(settings.data as any)?.direction_structure==="responsable_general_grands_groupes";
+ const grouped=useMemo(()=>{const map=new Map<string,typeof active>();for(const p of active){const key=p.pole_group?.trim()||"Non rattaché à un grand groupe";map.set(key,[...(map.get(key)??[]),p]);}return[...map.entries()].sort(([a],[b])=>a==="Non rattaché à un grand groupe"?1:b==="Non rattaché à un grand groupe"?-1:a.localeCompare(b,"fr"))},[active]);
+ if(poles.isLoading||members.isLoading||settings.isLoading)return <AppShell title="Pôles"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[0,1,2,3,4,5].map(i=><Skeleton key={i} className="h-44 rounded-xl"/>)}</div></AppShell>;
+ const cards=(list:typeof active)=><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{list.map(p=><PoleCard key={p.id} pole={p} people={byPole.get(p.id)??[]} showGroup={groupsActive}/>)}</div>;
+ return <AppShell title="Pôles" subtitle="Organisation du service Communication"><div className="space-y-6"><div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-4"><div><p className="font-semibold">{active.length} pôle{active.length>1?"s":""} actif{active.length>1?"s":""}</p><p className="text-sm text-muted-foreground">Tous les pôles, classés par ordre alphabétique.</p></div>{groupsActive?<div className="flex gap-2"><Button variant={view==="all"?"default":"outline"} size="sm" onClick={()=>setView("all")}><Users className="size-4"/>Tous les pôles</Button><Button variant={view==="groups"?"default":"outline"} size="sm" onClick={()=>setView("groups")}><Layers3 className="size-4"/>Par grand groupe</Button></div>:null}</div>{active.length===0?<EmptyState title="Aucun pôle actif"/>:view==="groups"&&groupsActive?<div className="space-y-10">{grouped.map(([group,list])=><section key={group} className="space-y-4"><div className="border-b-2 border-primary/20 pb-3"><div className="flex items-center gap-2"><Layers3 className="size-5 text-primary"/><h2 className="font-display text-xl font-bold">{group}</h2><Badge variant="secondary">{list.length} pôle{list.length>1?"s":""}</Badge></div></div>{cards(list)}</section>)}</div>:cards(active)}</div></AppShell>;
 }
+function PoleCard({pole,people,showGroup}:{pole:any;people:Person[];showGroup:boolean}){const ref=people.find(p=>p.referent),others=people.filter(p=>!p.referent);return <Card className="transition-shadow hover:shadow-md"><CardHeader className="pb-3"><div className="flex items-start justify-between gap-3"><div><CardTitle className="text-lg">{pole.name}</CardTitle>{showGroup&&pole.pole_group?<p className="mt-1 text-xs font-semibold uppercase tracking-wide text-primary">{pole.pole_group}</p>:null}</div><Badge variant="secondary">{people.length} membre{people.length>1?"s":""}</Badge></div></CardHeader><CardContent className="space-y-4">{pole.description?<p className="text-sm text-muted-foreground">{pole.description}</p>:null}<div className="space-y-2 rounded-xl bg-muted/35 p-3"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Équipe</p>{ref?<div className="font-bold">{ref.name} <span className="text-xs font-semibold text-primary">· Référent</span></div>:<p className="text-sm text-muted-foreground">Aucun référent défini</p>}{others.length?<div className="space-y-1 border-t pt-2">{others.map(p=><p key={p.id} className="text-sm">{p.name}{p.status==="en_formation"||p.status==="formation"?<span className="text-xs text-muted-foreground"> · En formation</span>:null}</p>)}</div>:null}</div></CardContent></Card>}
