@@ -10,6 +10,7 @@ const ITEMS:Item[]=[
  {key:"planning",icon:"📅",title:"Planning",desc:"Calendrier général et liste chronologique.",to:"/planning"},
  {key:"programmes",icon:"☑️",title:"Programmes",desc:"Statuts, dates, pôles et personnes mobilisées.",to:"/programmes"},
  {key:"trombinoscope",icon:"👥",title:"Trombinoscope",desc:"Membres, rôles, pôles et intégration.",to:"/trombinoscope"},
+ {key:"formations",icon:"🎓",title:"Formations",desc:"Parcours par pôle, progression et validations.",to:"/formations"},
  {key:"sollicitations",icon:"🤝",title:"Sollicitations ponctuelles",desc:"Renfort, ajout ou remplacement ponctuel.",to:"/sollicitations"},
  {key:"poles",icon:"🗂️",title:"Pôles",desc:"Référents et organisation des pôles.",to:"/poles"},
  {key:"pilotage",icon:"📊",title:"Pilotage",desc:"Suivi, priorités et indicateurs.",to:"/pilotage",staffOnly:true},
