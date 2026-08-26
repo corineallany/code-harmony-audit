@@ -1,119 +1,48 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-
 import { AppShell, EmptyState } from "@/components/AppShell";
-import { formatDate, logAction, solicitationsQuery, STATUS_LABEL } from "@/lib/icc";
+import { formatDate, membersQuery, polesQuery, programsQuery, solicitationsQuery, STATUS_LABEL } from "@/lib/icc";
 import { useCurrentRole } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
-export const Route = createFileRoute("/_authenticated/sollicitations")({
-  head: () => ({
-    meta: [
-      { title: "Sollicitations — COM ICC Le Mans" },
-      {
-        name: "description",
-        content: "Suivi des sollicitations adressées au pôle Communication : demandeur, échéance et décision.",
-      },
-      { property: "og:title", content: "Sollicitations — COM ICC Le Mans" },
-      { property: "og:description", content: "Demandes reçues par le pôle Communication et leur décision." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: Sollicitations,
-});
+export const Route=createFileRoute("/_authenticated/sollicitations")({component:Sollicitations});
+type Recipient={id:string;solicitation_id:string;member_id:string;response:string;reserve:string|null;refusal_reason:string|null;responded_at:string|null};
+const RLABEL:Record<string,string>={pending:"En attente",accepted:"Accepté",partial:"Accepté partiellement",refused:"Refusé"};
+const NLABEL:Record<string,string>={reinforcement:"Renfort ponctuel",replacement:"Remplacement",renfort:"Renfort ponctuel",remplacement:"Remplacement"};
+function uid(){return `s${Date.now()}${Math.random().toString(36).slice(2,7)}`}
 
-function Sollicitations() {
-  const solicitations = useQuery(solicitationsQuery);
-  const { isStaff, member } = useCurrentRole();
-  const queryClient = useQueryClient();
-
-  const decide = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: "accepted" | "refused" }) => {
-      const { error } = await supabase
-        .from("solicitations")
-        .update({ status, decision: status, decision_at: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw new Error(error.message);
-      await supabase.from("solicitation_decision_history").insert({
-        id: `d${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
-        solicitation_id: id,
-        decision: status,
-        changed_by: member?.full_name ?? null,
-      });
-      await logAction({
-        action: "decision_sollicitation",
-        entity: "solicitation",
-        entityId: id,
-        detail: STATUS_LABEL[status] ?? status,
-        actorName: member?.full_name,
-      });
-    },
-    onSuccess: () => {
-      toast.success("Décision enregistrée");
-      queryClient.invalidateQueries({ queryKey: ["solicitations"] });
-    },
-    onError: (error: Error) => toast.error("Action impossible", { description: error.message }),
-  });
-
-  if (solicitations.isLoading) {
-    return (
-      <AppShell title="Sollicitations">
-        <div className="space-y-3">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" />
-          ))}
-        </div>
-      </AppShell>
-    );
-  }
-
-  return (
-    <AppShell title="Sollicitations" subtitle="Demandes reçues par le pôle">
-      {(solicitations.data ?? []).length === 0 ? (
-        <EmptyState title="Aucune sollicitation" />
-      ) : (
-        <div className="space-y-4">
-          {(solicitations.data ?? []).map((s) => (
-            <Card key={s.id}>
-              <CardHeader className="gap-1">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <CardTitle className="text-base">{s.event_name}</CardTitle>
-                  <Badge variant={s.status === "pending" ? "outline" : "secondary"}>
-                    {STATUS_LABEL[s.status] ?? s.status}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {s.requester ?? "Demandeur inconnu"} · {formatDate(s.event_date)}
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {s.message ? <p className="text-sm">{s.message}</p> : null}
-                {isStaff && s.status === "pending" ? (
-                  <div className="flex gap-2">
-                    <Button size="sm" disabled={decide.isPending} onClick={() => decide.mutate({ id: s.id, status: "accepted" })}>
-                      Accepter
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={decide.isPending}
-                      onClick={() => decide.mutate({ id: s.id, status: "refused" })}
-                    >
-                      Refuser
-                    </Button>
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </AppShell>
-  );
+function Sollicitations(){
+ const solicitations=useQuery(solicitationsQuery),members=useQuery(membersQuery),poles=useQuery(polesQuery),programs=useQuery(programsQuery);const {isStaff,isAdmin,member}=useCurrentRole();const qc=useQueryClient();
+ const recipients=useQuery({queryKey:["solicitation-recipients"],queryFn:async()=>{const {data,error}=await (supabase as any).from("solicitation_recipients").select("*");if(error)throw error;return data as Recipient[]}});
+ const [search,setSearch]=useState(""),[status,setStatus]=useState("all"),[nature,setNature]=useState("all"),[program,setProgram]=useState("all"),[sort,setSort]=useState("recent"),[open,setOpen]=useState(false),[detail,setDetail]=useState<any|null>(null);
+ const [form,setForm]=useState({nature:"reinforcement",program_id:"",event_name:"",event_date:"",message:"",target:"members",memberIds:[] as string[],poleIds:[] as string[]});
+ const ms=members.data?.members.filter(m=>m.status==="active"&&!m.archived)??[],links=members.data?.links??[],ps=(poles.data??[]).filter(p=>!p.archived),progs=(programs.data??[]).filter(p=>!p.archived&&!p.deleted);
+ const rows=useMemo(()=>{let x=(solicitations.data??[]).filter(s=>!s.archived);if(search)x=x.filter(s=>`${s.event_name??""} ${s.requester??""} ${s.message??""}`.toLowerCase().includes(search.toLowerCase()));if(status!=="all")x=x.filter(s=>s.status===status);if(nature!=="all")x=x.filter(s=>(s as any).nature===nature||NLABEL[(s as any).nature??""]===NLABEL[nature]);if(program!=="all")x=x.filter(s=>s.program_id===program);return [...x].sort((a,b)=>sort==="old"?String(a.event_date).localeCompare(String(b.event_date)):String(b.event_date).localeCompare(String(a.event_date)))},[solicitations.data,search,status,nature,program,sort]);
+ function recs(id:string){return (recipients.data??[]).filter(r=>r.solicitation_id===id)}
+ function aggregate(rs:Recipient[]){if(!rs.length)return null;if(rs.every(r=>r.response==="pending"))return "pending";if(rs.every(r=>r.response==="accepted"))return "accepted";if(rs.every(r=>r.response==="refused"))return "refused";if(rs.some(r=>r.response==="pending"))return "pending";return "mixed"}
+ const create=useMutation({mutationFn:async()=>{if(!form.event_name.trim()&&!form.program_id)throw new Error("Renseigne un programme ou un intitulé.");let ids:string[]=[];if(form.target==="all")ids=ms.map(m=>m.id);if(form.target==="members")ids=form.memberIds;if(form.target==="poles")ids=ms.filter(m=>form.poleIds.some(p=>links.some(l=>l.member_id===m.id&&l.pole_id===p))).map(m=>m.id);ids=[...new Set(ids)];if(!ids.length)throw new Error("Sélectionne au moins une personne ou un pôle.");const id=uid(),p=progs.find(x=>x.id===form.program_id);const {error}=await (supabase as any).from("solicitations").insert({id,nature:form.nature,program_id:form.program_id||null,event_name:form.event_name.trim()||p?.title||"Sollicitation ponctuelle",event_date:form.event_date||p?.start_date||null,message:form.message.trim()||null,requester:member?.full_name??null,target_type:form.target,target_name:form.target==="all"?"Toute la COM":form.target==="poles"?form.poleIds.map(id=>ps.find(p=>p.id===id)?.name).filter(Boolean).join(", "):ids.map(id=>ms.find(m=>m.id===id)?.full_name).filter(Boolean).join(", "),status:"pending"});if(error)throw error;const {error:e2}=await (supabase as any).from("solicitation_recipients").insert(ids.map(member_id=>({solicitation_id:id,member_id})));if(e2)throw e2},onSuccess:()=>{toast.success("Sollicitation créée");setOpen(false);setForm({nature:"reinforcement",program_id:"",event_name:"",event_date:"",message:"",target:"members",memberIds:[],poleIds:[]});qc.invalidateQueries({queryKey:["solicitations"]});qc.invalidateQueries({queryKey:["solicitation-recipients"]})},onError:(e:Error)=>toast.error(e.message)});
+ const answer=useMutation({mutationFn:async({r,response,note}:{r:Recipient;response:string;note?:string})=>{const patch:any={response,responded_at:new Date().toISOString(),updated_at:new Date().toISOString(),reserve:response==="partial"?note||null:null,refusal_reason:response==="refused"?note||null:null};const {error}=await (supabase as any).from("solicitation_recipients").update(patch).eq("id",r.id);if(error)throw error;const all=(recs(r.solicitation_id)).map(x=>x.id===r.id?{...x,...patch}:x);const a=aggregate(all);await (supabase as any).from("solicitations").update({status:a==="mixed"?"partial":a}).eq("id",r.solicitation_id)},onSuccess:()=>{qc.invalidateQueries({queryKey:["solicitation-recipients"]});qc.invalidateQueries({queryKey:["solicitations"]});toast.success("Réponse enregistrée")}});
+ const archive=useMutation({mutationFn:async(id:string)=>{const {error}=await (supabase as any).from("solicitations").update({archived:true,archived_at:new Date().toISOString()}).eq("id",id);if(error)throw error},onSuccess:()=>{qc.invalidateQueries({queryKey:["solicitations"]});toast.success("Sollicitation archivée")}});
+ function respond(r:Recipient,response:string){let note="";if(response==="partial")note=window.prompt("Indique ta réserve :")??"";if(response==="refused")note=window.prompt("Indique le motif du refus :")??"";if((response==="partial"||response==="refused")&&!note.trim())return;answer.mutate({r,response,note})}
+ return <AppShell title="Sollicitations ponctuelles" subtitle="Renforts ponctuels et remplacements">
+  <div className="space-y-4">
+   <div className="flex justify-end">{isStaff&&<Button onClick={()=>setOpen(true)}>+ Nouvelle sollicitation</Button>}</div>
+   <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6"><Input placeholder="Rechercher…" value={search} onChange={e=>setSearch(e.target.value)}/><F value={status} set={setStatus} all="Tous les statuts" items={[["pending","En attente"],["accepted","Acceptée"],["partial","Réponses mixtes"],["refused","Refusée"],["cancelled","Annulée"]]}/><F value={nature} set={setNature} all="Toutes les natures" items={[["reinforcement","Renfort ponctuel"],["replacement","Remplacement"]]}/><F value={program} set={setProgram} all="Tous les programmes" items={progs.map(p=>[p.id,p.title])}/><F value={sort} set={setSort} all="Tri" items={[["recent","Plus récentes"],["old","Plus anciennes"]]}/></div>
+   {!rows.length?<EmptyState title="Aucune sollicitation"/>:<div className="space-y-4">{rows.map(s=>{const rs=recs(s.id),agg=aggregate(rs)??s.status;const p=progs.find(p=>p.id===s.program_id);return <Card key={s.id} className="cursor-pointer" onClick={()=>setDetail(s)}><CardHeader><div className="flex flex-wrap justify-between gap-2"><div><CardTitle className="text-lg">{s.event_name||p?.title}</CardTitle><p className="mt-1 text-sm text-muted-foreground">{NLABEL[(s as any).nature??""]??"Sollicitation ponctuelle"} · {formatDate(s.event_date)}{p?` · Programme : ${p.title}`:""}</p></div><Badge variant={agg==="pending"?"outline":"secondary"}>{agg==="mixed"||agg==="partial"?"Réponses mixtes":STATUS_LABEL[agg]??RLABEL[agg]??agg}</Badge></div></CardHeader><CardContent className="space-y-3">{s.message&&<p>{s.message}</p>}<p className="text-sm"><b>Cible :</b> {s.target_name||"—"}</p>{rs.length>0&&<div className="rounded-xl bg-muted/40 p-3"><b className="text-sm">Réponses individuelles</b><div className="mt-2 grid gap-2 md:grid-cols-2">{rs.map(r=>{const m=ms.find(x=>x.id===r.member_id)??members.data?.members.find(x=>x.id===r.member_id);return <div key={r.id} className="rounded-lg border bg-background p-2 text-sm"><div className="flex justify-between gap-2"><b>{m?.full_name??"Membre"}</b><span>{RLABEL[r.response]??r.response}</span></div>{r.reserve&&<p className="mt-1 text-muted-foreground">Réserve : {r.reserve}</p>}{r.refusal_reason&&<p className="mt-1 text-muted-foreground">Motif : {r.refusal_reason}</p>}{member?.id===r.member_id&&r.response==="pending"&&<div className="mt-2 flex flex-wrap gap-1" onClick={e=>e.stopPropagation()}><Button size="sm" onClick={()=>respond(r,"accepted")}>Accepter</Button><Button size="sm" variant="outline" onClick={()=>respond(r,"partial")}>Accepter partiellement</Button><Button size="sm" variant="outline" onClick={()=>respond(r,"refused")}>Refuser</Button></div>}</div>})}</div></div>}{isAdmin&&<div onClick={e=>e.stopPropagation()}><Button size="sm" variant="outline" onClick={()=>{if(confirm("Archiver cette sollicitation ?"))archive.mutate(s.id)}}>Archiver</Button></div>}</CardContent></Card>})}</div>}
+  </div>
+  <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Nouvelle sollicitation ponctuelle</DialogTitle></DialogHeader><div className="space-y-3"><F value={form.nature} set={v=>setForm({...form,nature:v})} all="Nature" items={[["reinforcement","Renfort ponctuel"],["replacement","Remplacement"]]}/><F value={form.program_id||"none"} set={v=>setForm({...form,program_id:v==="none"?"":v})} all="Programme lié" items={[["none","Aucun programme"],...progs.map(p=>[p.id,p.title])]}/><Input placeholder="Intitulé" value={form.event_name} onChange={e=>setForm({...form,event_name:e.target.value})}/><Input type="date" value={form.event_date} onChange={e=>setForm({...form,event_date:e.target.value})}/><Textarea placeholder="Besoin / message" value={form.message} onChange={e=>setForm({...form,message:e.target.value})}/><F value={form.target} set={v=>setForm({...form,target:v,memberIds:[],poleIds:[]})} all="Cible" items={[["members","Personnes sélectionnées"],["poles","Un ou plusieurs pôles"],["all","Toute la COM"]]}/>{form.target==="members"&&<Checks items={ms.map(m=>[m.id,m.full_name])} values={form.memberIds} set={v=>setForm({...form,memberIds:v})}/>} {form.target==="poles"&&<Checks items={ps.map(p=>[p.id,p.name])} values={form.poleIds} set={v=>setForm({...form,poleIds:v})}/>}</div><DialogFooter><Button variant="ghost" onClick={()=>setOpen(false)}>Annuler</Button><Button disabled={create.isPending} onClick={()=>create.mutate()}>Créer et envoyer</Button></DialogFooter></DialogContent></Dialog>
+  <Dialog open={!!detail} onOpenChange={o=>!o&&setDetail(null)}><DialogContent><DialogHeader><DialogTitle>{detail?.event_name}</DialogTitle></DialogHeader>{detail&&<div className="space-y-2"><p><b>Nature :</b> {NLABEL[detail.nature]??"Sollicitation ponctuelle"}</p><p><b>Date :</b> {formatDate(detail.event_date)}</p><p><b>Demandeur :</b> {detail.requester||"—"}</p><p><b>Cible :</b> {detail.target_name||"—"}</p>{detail.message&&<p><b>Besoin :</b> {detail.message}</p>}<div className="pt-2"><b>Réponses</b>{recs(detail.id).map(r=><p key={r.id} className="mt-1 text-sm">{members.data?.members.find(m=>m.id===r.member_id)?.full_name??"Membre"} — {RLABEL[r.response]}{r.reserve?` · Réserve : ${r.reserve}`:""}{r.refusal_reason?` · Motif : ${r.refusal_reason}`:""}</p>)}</div></div>}</DialogContent></Dialog>
+ </AppShell>
 }
+function F({value,set,all,items}:{value:string;set:(v:string)=>void;all:string;items:string[][]}){return <Select value={value} onValueChange={set}><SelectTrigger><SelectValue placeholder={all}/></SelectTrigger><SelectContent>{value==="all"||!items.some(i=>i[0]==="all")?<SelectItem value="all">{all}</SelectItem>:null}{items.map(([v,l])=><SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select>}
+function Checks({items,values,set}:{items:string[][];values:string[];set:(v:string[])=>void}){return <div className="max-h-52 space-y-1 overflow-y-auto rounded-xl border p-2">{items.map(([id,label])=><label key={id} className="flex items-center gap-2 rounded-lg p-2 hover:bg-muted"><Checkbox checked={values.includes(id)} onCheckedChange={c=>set(c?[...values,id]:values.filter(x=>x!==id))}/>{label}</label>)}</div>}
