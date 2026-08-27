@@ -1,0 +1,6 @@
+-- Vie d'équipe : propositions, sondages, événements fraternels et participations.
+-- Schéma appliqué à Supabase le 27/08/2026.
+-- Les événements Vie d'équipe sont volontairement séparés des programmes et présences opérationnelles.
+-- Tables : team_life_events, team_life_participations, team_life_polls, team_life_poll_options, team_life_poll_votes.
+-- Permissions matrice : vie_equipe.consulter / proposer / participer / voter / organiser / valider.
+-- Les dépenses de la caisse peuvent être reliées via team_finance_expenses.related_team_event_id.
