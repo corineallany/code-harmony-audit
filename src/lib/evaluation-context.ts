@@ -69,11 +69,10 @@ function decodeIncidents(detail: string | null | undefined) {
 }
 
 export async function getEvaluationFacts(memberId: string, periodStart: string, periodEnd: string): Promise<EvaluationFacts> {
-  const [programRes, assignmentRes, assignmentMemberRes, responseRes, attendanceRes, debriefRes, memberPoleRes, poleRes, pathRes, stepRes, memberPathRes] = await Promise.all([
+  const [programRes, assignmentRes, assignmentMemberRes, attendanceRes, debriefRes, memberPoleRes, poleRes, pathRes, stepRes, memberPathRes, solicitationRes, solicitationRecipientRes] = await Promise.all([
     db().from("programs").select("id,title,start_date,status").gte("start_date", periodStart).lte("start_date", periodEnd).eq("deleted", false),
     db().from("program_assignments").select("id,program_id,pole_id,required_count"),
     db().from("program_assignment_members").select("assignment_id,member_id"),
-    db().from("program_member_responses").select("program_id,member_id,status"),
     db().from("program_attendance").select("program_id,member_id,presence,is_reinforcement,replaced_member_id"),
     db().from("program_debriefs").select("program_id,went_well,to_improve,incident_detail,incident_type"),
     db().from("member_poles").select("member_id,pole_id,is_referent"),
@@ -81,9 +80,11 @@ export async function getEvaluationFacts(memberId: string, periodStart: string, 
     db().from("training_paths").select("id,pole_id,name,path_kind,archived"),
     db().from("training_steps").select("id,path_id,required"),
     db().from("member_training_paths").select("id,member_id,path_id,status,started_at,completed_at").eq("member_id", memberId),
+    db().from("solicitations").select("id,event_date,status,deleted,cancelled_at").gte("event_date", periodStart).lte("event_date", periodEnd).eq("deleted", false),
+    db().from("solicitation_recipients").select("solicitation_id,member_id,response,responded_at,selected").eq("member_id", memberId),
   ]);
 
-  for (const result of [programRes, assignmentRes, assignmentMemberRes, responseRes, attendanceRes, debriefRes, memberPoleRes, poleRes, pathRes, stepRes, memberPathRes]) {
+  for (const result of [programRes, assignmentRes, assignmentMemberRes, attendanceRes, debriefRes, memberPoleRes, poleRes, pathRes, stepRes, memberPathRes, solicitationRes, solicitationRecipientRes]) {
     if (result.error) throw new Error(result.error.message);
   }
 
@@ -103,8 +104,13 @@ export async function getEvaluationFacts(memberId: string, periodStart: string, 
   const reinforcements = attendance.filter((a: any) => a.presence === "renfort" || a.is_reinforcement).length;
   const replacements = attendance.filter((a: any) => !!a.replaced_member_id).length;
 
-  const responses = (responseRes.data ?? []).filter((r: any) => r.member_id === memberId && periodProgramIds.has(r.program_id));
-  const answered = responses.filter((r: any) => r.status !== "pending").length;
+  const activeSolicitationIds = new Set(
+    (solicitationRes.data ?? [])
+      .filter((s: any) => !s.cancelled_at && !["cancelled", "annulee", "annulée"].includes(String(s.status ?? "").toLowerCase()))
+      .map((s: any) => s.id),
+  );
+  const solicitationResponses = (solicitationRecipientRes.data ?? []).filter((r: any) => activeSolicitationIds.has(r.solicitation_id));
+  const answered = solicitationResponses.filter((r: any) => !!r.responded_at || !["", "pending", "en_attente", "en attente"].includes(String(r.response ?? "pending").toLowerCase())).length;
 
   const attendedProgramIds = new Set(attended.map((a: any) => a.program_id));
   const relevantDebriefs = (debriefRes.data ?? []).filter((d: any) => attendedProgramIds.has(d.program_id));
@@ -199,7 +205,7 @@ export async function getEvaluationFacts(memberId: string, periodStart: string, 
     reliability: {
       presenceRate: pct(attended.length, attendance.length),
       responsesAnswered: answered,
-      responsesTotal: responses.length,
+      responsesTotal: solicitationResponses.length,
     },
     postService: {
       incidentsExplicitlyLinked: linkedIncidents,
