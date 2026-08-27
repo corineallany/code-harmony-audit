@@ -1,0 +1,4 @@
+-- Evaluations par pôle/fonction.
+-- Production: ajout evaluations.pole_id, table evaluation_contributors,
+-- index anti-doublon membre+pôle+type+période et contrôles d'appartenance au pôle.
+-- Deux co-référents peuvent contribuer à une même évaluation officielle sans en créer deux.
