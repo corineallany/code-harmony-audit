@@ -79,6 +79,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "theme-color", content: "#4c0884" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-title", content: "COM ICC Le Mans" },
       { title: "COM ICC Le Mans — Espace du pôle Communication" },
       {
         name: "description",
@@ -98,7 +102,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/com-icc-lemans/app-icon.svg", type: "image/svg+xml" },
+      { rel: "apple-touch-icon", href: "/com-icc-lemans/app-icon.svg" },
+      { rel: "manifest", href: "/com-icc-lemans/manifest.webmanifest" },
     ],
   }),
 
