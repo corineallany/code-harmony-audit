@@ -9,9 +9,9 @@
   "theme_color": "#4c0884",
   "icons": [
     {
-      "src": "/com-icc-lemans/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
+      "src": "/com-icc-lemans/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ]
