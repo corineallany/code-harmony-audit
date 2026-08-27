@@ -1,0 +1,5 @@
+-- Fondation structurelle Responsable Grand Groupe.
+-- Production: tables com_groups et com_group_leads, poles.com_group_id,
+-- helpers user_leads_group / user_leads_pole_group et prise en charge du scope mon_groupe.
+-- Aucun grand groupe n'est cree automatiquement: la structure reste neutre jusqu'a sa configuration.
+-- Les futurs droits group_lead pourront utiliser mon_groupe sans etre assimiles a Toute la COM.
