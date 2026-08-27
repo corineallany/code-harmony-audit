@@ -11,7 +11,17 @@ export const programsQuery=queryOptions({queryKey:["programs"],queryFn:async():P
 export const solicitationsQuery=queryOptions({queryKey:["solicitations"],queryFn:async()=>unwrap(await supabase.from("solicitations").select("*").eq("deleted",false).order("event_date",{ascending:true}))});
 export const auditQuery=queryOptions({queryKey:["audit-log"],queryFn:async()=>unwrap(await supabase.from("audit_log").select("*").order("occurred_at",{ascending:false}).limit(100))});
 export const settingsQuery=queryOptions({queryKey:["app-settings"],queryFn:async()=>{const{data,error}=await supabase.from("app_settings").select("*").eq("id","main").maybeSingle();if(error)throw new Error(error.message);return data}});
-export async function logAction(entry:{action:string;detail?:string;entity?:string;entityId?:string;actorName?:string|null|undefined}){const id=`a${Date.now()}${Math.random().toString(36).slice(2,7)}`;await supabase.from("audit_log").insert({id,action:entry.action,detail:entry.detail??null,entity:entry.entity??null,entity_id:entry.entityId??null,actor_name:entry.actorName??null})}
+export async function logAction(entry:{action:string;detail?:string;entity?:string;entityId?:string;actorName?:string|null|undefined}){
+  const id=`a${Date.now()}${Math.random().toString(36).slice(2,7)}`;
+  const {data:{session}}=await supabase.auth.getSession();
+  const actorId=session?.user?.id??null;
+  let actorName=entry.actorName??null;
+  if(actorId&&!actorName){
+    const {data:linked}=await supabase.from("members").select("full_name").eq("auth_user_id",actorId).maybeSingle();
+    actorName=linked?.full_name??session?.user?.email??null;
+  }
+  await supabase.from("audit_log").insert({id,action:entry.action,detail:entry.detail??null,entity:entry.entity??null,entity_id:entry.entityId??null,actor_name:actorName,actor_id:actorId});
+}
 export const RESPONSE_LABEL:Record<ResponseStatus,string>={available:"Disponible",partial:"Partiel",unavailable:"Indisponible",pending:"En attente"};
 export const STATUS_LABEL:Record<string,string>={unconfirmed:"Non confirmé",confirmed:"Confirmé",postponed:"Reporté",cancelled:"Annulé",draft:"Brouillon",pending:"En attente",done:"Terminé",accepted:"Acceptée",refused:"Refusée"};
 export const RECURRENCE_LABEL:Record<string,string>={ponctuel:"Ponctuel",weekly:"Hebdomadaire",hebdo:"Hebdomadaire",hebdomadaire:"Hebdomadaire",biweekly:"Une semaine sur 2","1_semaine_sur_2":"Une semaine sur 2",bimonthly:"Bimensuel",bimensuel:"Bimensuel",monthly:"Mensuel",mensuel:"Mensuel",quarterly:"Trimestriel",trimestriel:"Trimestriel",yearly:"Annuel",annuel:"Annuel"};
@@ -36,6 +46,6 @@ export const programDocumentsQuery=queryOptions({queryKey:["program-documents"],
 export const internalNotesQuery=queryOptions({queryKey:["internal-notes"],queryFn:async()=>unwrap(await supabase.from("internal_notes").select("*").order("created_at",{ascending:false}))});
 export function notificationPreferencesQuery(userId:string|undefined){return queryOptions({queryKey:["notification-preferences",userId],enabled:!!userId,queryFn:async()=>unwrap(await supabase.from("notification_preferences").select("*").eq("user_id",userId!))})}
 export function shortcutsQuery(userId:string|undefined){return queryOptions({queryKey:["user-shortcuts",userId],enabled:!!userId,queryFn:async()=>unwrap(await supabase.from("user_shortcuts").select("*").eq("user_id",userId!).order("sort_order"))})}
-export function hiddenItemsQuery(userId:string|undefined){return queryOptions({queryKey:["user-hidden-items",userId],enabled:!!userId,queryFn:async()=>unwrap(await supabase.from("user_hidden_items").select("*").eq("user_id",userId!))})}
+export function hiddenItemsQuery(userId:string|undefined){return queryOptions({queryKey:["user-hidden-items",userId],enabled:!!userId,queryFn:async()=>unwrap(await supabase.from("user_hidden_items").select("*").eq("user_id",userId!).order("sort_order"))})}
 export function isProgramFinished(p:{start_date:string|null;end_date:string|null;end_time:string|null}){const day=p.end_date??p.start_date;if(!day)return false;const end=new Date(`${day}T${p.end_time&&/^\d{2}:\d{2}/.test(p.end_time)?p.end_time:"23:59"}:00`);return end.getTime()<Date.now()}
 export function timelineQuery(entity:string,entityId:string){return queryOptions({queryKey:["timeline",entity,entityId],queryFn:async()=>unwrap(await supabase.from("audit_log").select("*").eq("entity",entity).eq("entity_id",entityId).order("occurred_at",{ascending:false}))})}
