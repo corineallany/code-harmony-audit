@@ -1,0 +1,9 @@
+-- Consolidation transversale des permissions V1.
+-- La migration de production correspondante a ete appliquee le 27/08/2026.
+-- Helpers de perimetre: user_member_id, user_has_pole, user_is_referent_of_pole,
+-- scope_allows_pole, scope_allows_program, scope_allows_member.
+-- Les anciennes policies is_staff ont ete remplacees pour programmes,
+-- affectations, presence, documents, post-service, evaluations/objectifs et taches.
+-- Les droits passent desormais par access_scope_for_user et respectent moi/mon_pole/tous.
+-- Les taches conservent le droit de mise a jour de l'assigne lui-meme.
+-- Voir migration Supabase enrichie appliquee en production pour le SQL canonique.
