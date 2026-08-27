@@ -9,14 +9,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrentRole } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { asScores, averageScore, EVAL_KIND_LABEL, type EvaluationKind } from "@/lib/evaluations";
 import { logAction, membersQuery, polesQuery } from "@/lib/icc";
 
 export const Route = createFileRoute("/_authenticated/membre/$id")({ component: MemberPage });
 
+const db = () => supabase as any;
 const MONTHS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
 const MEMBER_ROLE_OPTIONS = [
   { value: "equipier", label: "Équipier" },
@@ -25,25 +28,20 @@ const MEMBER_ROLE_OPTIONS = [
 ] as const;
 
 type Draft = {
-  first_name: string;
-  last_name: string;
-  base_role: string;
-  login_email: string;
-  photo_url: string;
-  affiliations: string;
-  arrival_month: string;
-  arrival_year: string;
-  birthday_day: string;
-  birthday_month: string;
-  training_start: string;
-  training_end_planned: string;
-  training_end_effective: string;
-  training_done: boolean;
-  is_icc: boolean;
-  is_ejp: boolean;
-  inactive_note: string;
-  poles: Record<string, { selected: boolean; referent: boolean }>;
+  first_name: string; last_name: string; base_role: string; login_email: string; photo_url: string; affiliations: string;
+  arrival_month: string; arrival_year: string; birthday_day: string; birthday_month: string; training_start: string;
+  training_end_planned: string; training_end_effective: string; training_done: boolean; is_icc: boolean; is_ejp: boolean;
+  inactive_note: string; poles: Record<string, { selected: boolean; referent: boolean }>;
 };
+
+type EvaluationObjective = {
+  id: string; evaluation_id: string; subject_member_id: string; label: string; due_date: string | null;
+  coach_member_id: string | null; status: string; completed_at: string | null;
+};
+type MemberTrainingPath = { id: string; path_id: string; status: string; started_at: string; completed_at: string | null };
+type TrainingPath = { id: string; pole_id: string; name: string; path_kind: string };
+type TrainingStep = { id: string; path_id: string; required: boolean };
+type MemberTrainingStep = { member_training_path_id: string; step_id: string; status: string };
 
 const blank = (): Draft => ({
   first_name: "", last_name: "", base_role: "equipier", login_email: "", photo_url: "", affiliations: "",
@@ -55,20 +53,53 @@ const blank = (): Draft => ({
 function initials(name: string) { return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join(""); }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">{label}</span>{children}</label>; }
 function Info({ label, value }: { label: string; value: string }) { return <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 font-semibold">{value}</p></div>; }
+function dateLabel(value: string | null | undefined) { return value ? new Date(`${value.slice(0, 10)}T12:00:00`).toLocaleDateString("fr-FR") : "—"; }
 
 function MemberPage() {
-  const { id } = Route.useParams(); const isNew = id === "nouveau"; const navigate = useNavigate(); const qc = useQueryClient();
-  const { isAdmin, member: actor } = useCurrentRole(); const members = useQuery(membersQuery); const poles = useQuery(polesQuery);
+  const { id } = Route.useParams();
+  const isNew = id === "nouveau";
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { isAdmin, member: actor } = useCurrentRole();
+  const members = useQuery(membersQuery);
+  const poles = useQuery(polesQuery);
   const row = isNew ? null : (members.data?.members ?? []).find((m) => m.id === id) as any;
   const links = (members.data?.links ?? []).filter((l) => l.member_id === id);
-  const [editing, setEditing] = useState(isNew); const [draft, setDraft] = useState<Draft>(blank()); const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [editing, setEditing] = useState(isNew);
+  const [draft, setDraft] = useState<Draft>(blank());
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const poleNames = useMemo(() => new Map((poles.data ?? []).map((p) => [p.id, p.name])), [poles.data]);
   const activePoles = useMemo(() => (poles.data ?? []).filter((p) => !p.archived), [poles.data]);
+
+  const evaluations = useQuery({
+    queryKey: ["member-evaluations", id], enabled: !isNew,
+    queryFn: async () => { const { data, error } = await db().from("evaluations").select("*").eq("subject_member_id", id).eq("status", "validated").order("validated_at", { ascending: false }); if (error) throw new Error(error.message); return data ?? []; },
+  });
+  const objectives = useQuery({
+    queryKey: ["member-evaluation-objectives", id], enabled: !isNew,
+    queryFn: async () => { const { data, error } = await db().from("evaluation_objectives").select("*").eq("subject_member_id", id).order("created_at", { ascending: false }); if (error) throw new Error(error.message); return (data ?? []) as EvaluationObjective[]; },
+  });
+  const training = useQuery({
+    queryKey: ["member-development-training", id], enabled: !isNew,
+    queryFn: async () => {
+      const [mp, p, s] = await Promise.all([
+        db().from("member_training_paths").select("id,path_id,status,started_at,completed_at").eq("member_id", id).order("started_at", { ascending: false }),
+        db().from("training_paths").select("id,pole_id,name,path_kind"),
+        db().from("training_steps").select("id,path_id,required"),
+      ]);
+      if (mp.error) throw new Error(mp.error.message); if (p.error) throw new Error(p.error.message); if (s.error) throw new Error(s.error.message);
+      const memberPaths = (mp.data ?? []) as MemberTrainingPath[];
+      const memberPathIds = memberPaths.map((x) => x.id);
+      const ms = memberPathIds.length ? await db().from("member_training_steps").select("member_training_path_id,step_id,status").in("member_training_path_id", memberPathIds) : { data: [], error: null };
+      if (ms.error) throw new Error(ms.error.message);
+      return { memberPaths, paths: (p.data ?? []) as TrainingPath[], steps: (s.data ?? []) as TrainingStep[], memberSteps: (ms.data ?? []) as MemberTrainingStep[] };
+    },
+  });
 
   useEffect(() => {
     if (!row) return;
     const pm: Draft["poles"] = {}; for (const l of links) pm[l.pole_id] = { selected: true, referent: l.is_referent };
-    const derivedRole = row.training_start && !row.training_done ? "formation" : pm && Object.values(pm).some((p) => p.referent) ? "referent" : "equipier";
+    const derivedRole = row.training_start && !row.training_done ? "formation" : Object.values(pm).some((p) => p.referent) ? "referent" : "equipier";
     setDraft({ first_name: row.first_name ?? "", last_name: row.last_name ?? "", base_role: derivedRole, login_email: row.login_email ?? "", photo_url: row.photo_url ?? "", affiliations: row.affiliations ?? "", arrival_month: row.arrival_month ? String(row.arrival_month) : "", arrival_year: row.arrival_year ? String(row.arrival_year) : "", birthday_day: row.birthday_day ? String(row.birthday_day) : "", birthday_month: row.birthday_month ? String(row.birthday_month) : "", training_start: row.training_start ?? "", training_end_planned: row.training_end_planned ?? "", training_end_effective: row.training_end_effective ?? "", training_done: !!row.training_done, is_icc: !!row.is_icc, is_ejp: !!row.is_ejp, inactive_note: row.inactive_note ?? "", poles: pm });
   }, [row?.id, members.data?.links]);
 
@@ -79,8 +110,7 @@ function MemberPage() {
 
   const save = useMutation({ mutationFn: async () => {
     if (!isAdmin) throw new Error("Action non autorisée."); const full_name=`${draft.first_name.trim()} ${draft.last_name.trim()}`.trim(); if(!full_name)throw new Error("Le nom du membre est obligatoire."); const memberId=isNew?crypto.randomUUID():id;
-    const isFormation = draft.base_role === "formation";
-    const isReferent = draft.base_role === "referent";
+    const isFormation = draft.base_role === "formation"; const isReferent = draft.base_role === "referent";
     if (isReferent && !Object.values(draft.poles).some((p) => p.selected && p.referent)) throw new Error("Pour le rôle Référent, sélectionne au moins un pôle et active Référent sur ce pôle.");
     const trainingStart = isFormation ? (draft.training_start || new Date().toISOString().slice(0,10)) : draft.training_start;
     const payload:any={first_name:draft.first_name.trim()||null,last_name:draft.last_name.trim()||null,full_name,base_role:isReferent?"referent":"equipier",login_email:draft.login_email.trim()||null,photo_url:draft.photo_url.trim()||null,affiliations:draft.affiliations.trim()||null,arrival_month:draft.arrival_month?Number(draft.arrival_month):null,arrival_year:draft.arrival_year?Number(draft.arrival_year):null,birthday_day:draft.birthday_day?Number(draft.birthday_day):null,birthday_month:draft.birthday_month?Number(draft.birthday_month):null,training_start:trainingStart||null,training_end_planned:draft.training_end_planned||null,training_end_effective:draft.training_end_effective||null,training_done:isFormation?false:draft.training_done,is_icc:draft.is_icc,is_ejp:draft.is_ejp,inactive_note:draft.inactive_note.trim()||null,status:isNew?"active":row?.status??"active"};
@@ -93,10 +123,32 @@ function MemberPage() {
   const setStatus=useMutation({mutationFn:async(status:"active"|"inactive"|"archived")=>{if(!isAdmin||!row)throw new Error("Action non autorisée.");const{error}=await supabase.from("members").update({status}as any).eq("id",row.id);if(error)throw new Error(error.message);await logAction({action:`membre_${status}`,entity:"member",entityId:row.id,detail:row.full_name,actorName:actor?.full_name})},onSuccess:async()=>{await qc.invalidateQueries({queryKey:["members"]});toast.success("Statut du membre mis à jour")},onError:(error:Error)=>toast.error(error.message)});
 
   if(!isNew&&members.isLoading)return <AppShell title="Fiche membre"><p>Chargement…</p></AppShell>; if(!isNew&&!row)return <AppShell title="Fiche membre"><EmptyState title="Membre introuvable"/></AppShell>; if(isNew&&!isAdmin)return <AppShell title="Nouveau membre"><EmptyState title="Accès réservé"/></AppShell>;
-  const statusLabel=row?.status==="archived"?"Archivé":row?.status==="inactive"?"Inactif":row?.training_start&&!row?.training_done?"En formation":"Actif"; const memberPoles=links.map(l=>({...l,name:poleNames.get(l.pole_id)??"Pôle"})); const referentPoles=memberPoles.filter(p=>p.is_referent);
+  const statusLabel=row?.status==="archived"?"Archivé":row?.status==="inactive"?"Inactif":row?.training_start&&!row?.training_done?"En formation":"Actif";
+  const memberPoles=links.map(l=>({...l,name:poleNames.get(l.pole_id)??"Pôle"})); const referentPoles=memberPoles.filter(p=>p.is_referent);
+  const evalRows = (evaluations.data ?? []) as any[];
+  const objectiveRows = objectives.data ?? [];
+  const pathById = new Map((training.data?.paths ?? []).map((p) => [p.id, p]));
+  const internalTraining = (training.data?.memberPaths ?? []).map((mp) => {
+    const path = pathById.get(mp.path_id); if (!path || path.path_kind !== "internal") return null;
+    const defs = (training.data?.steps ?? []).filter((s) => s.path_id === mp.path_id && s.required !== false);
+    const rows = (training.data?.memberSteps ?? []).filter((s) => s.member_training_path_id === mp.id);
+    const done = defs.filter((d) => rows.some((r) => r.step_id === d.id && r.status === "done")).length;
+    const progress = defs.length ? Math.round(done / defs.length * 100) : mp.status === "completed" ? 100 : 0;
+    return { ...mp, path, progress };
+  }).filter(Boolean) as Array<MemberTrainingPath & { path: TrainingPath; progress: number }>;
 
   return <AppShell title={isNew?"Nouveau membre":row.full_name} subtitle={isNew?"Créer une fiche membre":"Fiche membre"} actions={!isNew&&isAdmin?<Button size="sm" variant="outline" onClick={()=>setEditing(!editing)}>{editing?"Fermer la modification":"Modifier"}</Button>:undefined}>
-    {!editing&&row?<div className="space-y-5"><div className="rounded-2xl border bg-card p-5"><div className="flex flex-wrap items-start gap-4"><Avatar className="size-24"><AvatarImage src={row.photo_url??undefined}/><AvatarFallback>{initials(row.full_name)}</AvatarFallback></Avatar><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-black text-icc-violet">{row.full_name}</h2><Badge>{statusLabel}</Badge></div><div className="mt-2 flex flex-wrap items-center gap-1">{referentPoles.length?<><Badge variant="outline">🏅 Référent</Badge><strong className="text-sm">{referentPoles.map(p=>p.name).join(" · ")}</strong></>:null}{row.is_icc?<Badge variant="secondary">ICC</Badge>:null}{row.is_ejp?<Badge variant="secondary">EJP</Badge>:null}</div>{row.login_email?<p className="mt-3 text-sm text-muted-foreground">{row.login_email}</p>:null}</div></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><Info label="Intégration" value={row.arrival_year?`${row.arrival_month?`${MONTHS[row.arrival_month-1]} `:""}${row.arrival_year}`:"—"}/><Info label="Anniversaire" value={row.birthday_day&&row.birthday_month?`${row.birthday_day} ${MONTHS[row.birthday_month-1]}`:"—"}/><Info label="Pôles" value={memberPoles.length?memberPoles.map(p=>p.name).join(" · "):"—"}/><Info label="Formation" value={row.training_start?`${new Date(row.training_start).toLocaleDateString("fr-FR")}${row.training_done?" · terminée":" · en cours"}`:"—"}/></div>{row.affiliations?<div className="mt-4 rounded-xl bg-muted/50 p-3 text-sm"><b>Informations</b><p className="mt-1">{row.affiliations}</p></div>:null}{row.inactive_note?<div className="mt-3 rounded-xl bg-muted/50 p-3 text-sm"><b>Précision d'inactivité</b><p className="mt-1">{row.inactive_note}</p></div>:null}</div>{isAdmin?<div className="rounded-2xl border p-4"><h3 className="font-black text-icc-violet">Actions de gestion</h3><div className="mt-3 flex flex-wrap gap-2">{row.status!=="active"?<Button size="sm" variant="outline" onClick={()=>setStatus.mutate("active")}>Rendre actif</Button>:null}{row.status==="active"?<Button size="sm" variant="outline" onClick={()=>setStatus.mutate("inactive")}>Rendre inactif</Button>:null}{row.status!=="archived"?<Button size="sm" variant="ghost" onClick={()=>{if(window.confirm(`Archiver « ${row.full_name} » ? La fiche restera conservée et gérable dans Archives & corbeille.`))setStatus.mutate("archived")}}>Archiver</Button>:null}</div></div>:null}</div>:
+    {!editing&&row?<div className="space-y-5">
+      <div className="rounded-2xl border bg-card p-5"><div className="flex flex-wrap items-start gap-4"><Avatar className="size-24"><AvatarImage src={row.photo_url??undefined}/><AvatarFallback>{initials(row.full_name)}</AvatarFallback></Avatar><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-black text-icc-violet">{row.full_name}</h2><Badge>{statusLabel}</Badge></div><div className="mt-2 flex flex-wrap items-center gap-1">{referentPoles.length?<><Badge variant="outline">🏅 Référent</Badge><strong className="text-sm">{referentPoles.map(p=>p.name).join(" · ")}</strong></>:null}{row.is_icc?<Badge variant="secondary">ICC</Badge>:null}{row.is_ejp?<Badge variant="secondary">EJP</Badge>:null}</div>{row.login_email?<p className="mt-3 text-sm text-muted-foreground">{row.login_email}</p>:null}</div></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><Info label="Intégration" value={row.arrival_year?`${row.arrival_month?`${MONTHS[row.arrival_month-1]} `:""}${row.arrival_year}`:"—"}/><Info label="Anniversaire" value={row.birthday_day&&row.birthday_month?`${row.birthday_day} ${MONTHS[row.birthday_month-1]}`:"—"}/><Info label="Pôles" value={memberPoles.length?memberPoles.map(p=>p.name).join(" · "):"—"}/><Info label="Formation" value={row.training_start?`${new Date(row.training_start).toLocaleDateString("fr-FR")}${row.training_done?" · terminée":" · en cours"}`:"—"}/></div>{row.affiliations?<div className="mt-4 rounded-xl bg-muted/50 p-3 text-sm"><b>Informations</b><p className="mt-1">{row.affiliations}</p></div>:null}{row.inactive_note?<div className="mt-3 rounded-xl bg-muted/50 p-3 text-sm"><b>Précision d'inactivité</b><p className="mt-1">{row.inactive_note}</p></div>:null}</div>
+
+      <div className="rounded-2xl border bg-card p-5">
+        <div className="mb-4"><h3 className="font-black text-icc-violet">Développement & progression</h3><p className="mt-1 text-xs text-muted-foreground">Continuité entre formations internes, évaluations validées et objectifs de progression.</p></div>
+        {internalTraining.length ? <div className="mb-5 space-y-2"><h4 className="text-sm font-bold">Compétences en acquisition / formations internes</h4>{internalTraining.map((t) => <div key={t.id} className="rounded-xl bg-muted/40 p-3"><div className="flex items-center justify-between gap-3 text-sm"><b>{poleNames.get(t.path.pole_id) ?? "Pôle"} — {t.path.name}</b><Badge variant={t.status === "completed" ? "default" : "secondary"}>{t.status === "completed" ? "Validée" : `${t.progress}%`}</Badge></div><Progress value={t.progress} className="mt-2 h-2"/><p className="mt-1 text-xs text-muted-foreground">Début {dateLabel(t.started_at)}{t.completed_at ? ` · validation ${dateLabel(t.completed_at)}` : ""}</p></div>)}</div> : null}
+        {evalRows.length ? <div className="space-y-3"><h4 className="text-sm font-bold">Évaluations validées</h4>{evalRows.slice(0,5).map((evaluation) => { const scores=asScores(evaluation.scores), avg=averageScore(scores), evalObjectives=objectiveRows.filter((o)=>o.evaluation_id===evaluation.id), done=evalObjectives.filter((o)=>o.status==="done").length; return <div key={evaluation.id} className="rounded-xl border p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="font-bold">{EVAL_KIND_LABEL[evaluation.kind as EvaluationKind] ?? evaluation.kind}</p><p className="text-xs text-muted-foreground">{evaluation.period_label ?? "Période libre"}{evaluation.period_start && evaluation.period_end ? ` · ${dateLabel(evaluation.period_start)} → ${dateLabel(evaluation.period_end)}` : ""}</p></div>{avg!==null?<Badge variant="secondary">{avg}/5</Badge>:null}</div>{evaluation.strengths?<p className="mt-2 text-sm"><b>Points forts :</b> {evaluation.strengths}</p>:null}{evaluation.improvements?<p className="mt-1 text-sm"><b>Axes de progression :</b> {evaluation.improvements}</p>:null}{evalObjectives.length?<div className="mt-3 rounded-lg bg-muted/50 p-2"><p className="text-xs font-bold">Objectifs : {done}/{evalObjectives.length} atteints</p>{evalObjectives.map((o)=><p key={o.id} className="mt-1 text-xs">{o.status==="done"?"✓":"○"} {o.label}{o.due_date?` · ${dateLabel(o.due_date)}`:""}</p>)}</div>:null}</div>})}</div> : internalTraining.length ? null : <p className="text-sm text-muted-foreground">Aucune évaluation validée ou formation interne enregistrée pour le moment.</p>}
+      </div>
+
+      {isAdmin?<div className="rounded-2xl border p-4"><h3 className="font-black text-icc-violet">Actions de gestion</h3><div className="mt-3 flex flex-wrap gap-2">{row.status!=="active"?<Button size="sm" variant="outline" onClick={()=>setStatus.mutate("active")}>Rendre actif</Button>:null}{row.status==="active"?<Button size="sm" variant="outline" onClick={()=>setStatus.mutate("inactive")}>Rendre inactif</Button>:null}{row.status!=="archived"?<Button size="sm" variant="ghost" onClick={()=>{if(window.confirm(`Archiver « ${row.full_name} » ? La fiche restera conservée et gérable dans Archives & corbeille.`))setStatus.mutate("archived")}}>Archiver</Button>:null}</div></div>:null}
+    </div>:
     <div className="space-y-5 rounded-2xl border bg-card p-5"><div className="rounded-xl border border-dashed p-4"><p className="mb-3 text-xs font-semibold text-muted-foreground">Photo du membre</p><div className="flex flex-wrap items-center gap-4"><Avatar className="size-20"><AvatarImage src={draft.photo_url||undefined}/><AvatarFallback>{initials(`${draft.first_name} ${draft.last_name}`.trim()||"Membre")}</AvatarFallback></Avatar><div className="space-y-2"><Input type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={uploadingPhoto} onChange={e=>{const f=e.target.files?.[0];if(f)uploadPhoto(f);e.currentTarget.value=""}}/><p className="text-xs text-muted-foreground">JPG, PNG, WebP ou GIF · 5 Mo maximum</p>{draft.photo_url?<Button type="button" size="sm" variant="ghost" onClick={()=>setDraft({...draft,photo_url:""})}>Retirer la photo</Button>:null}</div></div></div>
     <div className="grid gap-3 sm:grid-cols-2"><Field label="Prénom"><Input value={draft.first_name} onChange={e=>setDraft({...draft,first_name:e.target.value})}/></Field><Field label="Nom"><Input value={draft.last_name} onChange={e=>setDraft({...draft,last_name:e.target.value})}/></Field><Field label="Rôle"><Select value={draft.base_role} onValueChange={value=>setDraft({...draft,base_role:value})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{MEMBER_ROLE_OPTIONS.map(r=><SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent></Select></Field><Field label="E-mail"><Input type="email" value={draft.login_email} onChange={e=>setDraft({...draft,login_email:e.target.value})}/></Field><Field label="Anniversaire - jour"><Input type="number" min="1" max="31" value={draft.birthday_day} onChange={e=>setDraft({...draft,birthday_day:e.target.value})}/></Field><Field label="Anniversaire - mois"><Input type="number" min="1" max="12" value={draft.birthday_month} onChange={e=>setDraft({...draft,birthday_month:e.target.value})}/></Field><Field label="Mois d'intégration"><Input type="number" min="1" max="12" value={draft.arrival_month} onChange={e=>setDraft({...draft,arrival_month:e.target.value})}/></Field><Field label="Année d'intégration"><Input type="number" min="2000" max="2100" value={draft.arrival_year} onChange={e=>setDraft({...draft,arrival_year:e.target.value})}/></Field><Field label="Début de formation"><Input type="date" value={draft.training_start} onChange={e=>setDraft({...draft,training_start:e.target.value})}/></Field><Field label="Fin prévue"><Input type="date" value={draft.training_end_planned} onChange={e=>setDraft({...draft,training_end_planned:e.target.value})}/></Field><Field label="Fin effective"><Input type="date" value={draft.training_end_effective} onChange={e=>setDraft({...draft,training_end_effective:e.target.value})}/></Field></div>
     <Field label="Informations / affiliations"><Textarea value={draft.affiliations} onChange={e=>setDraft({...draft,affiliations:e.target.value})}/></Field><Field label="Précision en cas d'inactivité"><Textarea value={draft.inactive_note} onChange={e=>setDraft({...draft,inactive_note:e.target.value})}/></Field><div className="flex flex-wrap gap-4 text-sm"><label className="flex items-center gap-2"><Checkbox checked={draft.is_icc} onCheckedChange={v=>setDraft({...draft,is_icc:v===true})}/> ICC</label><label className="flex items-center gap-2"><Checkbox checked={draft.is_ejp} onCheckedChange={v=>setDraft({...draft,is_ejp:v===true})}/> EJP</label><label className="flex items-center gap-2"><Checkbox checked={draft.training_done} onCheckedChange={v=>setDraft({...draft,training_done:v===true})}/> Formation terminée</label></div>
