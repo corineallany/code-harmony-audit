@@ -1,98 +1,55 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { CalendarDays, Download, List, Printer } from "lucide-react";
 
 import { AppShell, EmptyState } from "@/components/AppShell";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { useCurrentRole } from "@/hooks/useAuth";
-import { formatDate, polesQuery, programsQuery, RESPONSE_LABEL, STATUS_LABEL } from "@/lib/icc";
+import { supabase } from "@/integrations/supabase/client";
+import { downloadCsv, exportStamp, toCsv } from "@/lib/exports";
+import { availabilityQuery, formatDate, polesQuery, programsQuery, RESPONSE_LABEL, STATUS_LABEL } from "@/lib/icc";
 
 export const Route = createFileRoute("/_authenticated/mon-planning")({
-  head: () => ({
-    meta: [
-      { title: "Mon planning — COM ICC Le Mans" },
-      {
-        name: "description",
-        content:
-          "Vos services, confirmations, remplacements et rappels au sein du pôle Communication ICC Le Mans.",
-      },
-      { property: "og:title", content: "Mon planning — COM ICC Le Mans" },
-      {
-        property: "og:description",
-        content: "Programmes et sollicitations qui concernent votre profil et vos pôles.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "Mon planning — COM ICC Le Mans" }, { name: "description", content: "Mon calendrier personnel : services, indisponibilités et formations planifiées." }] }),
   component: MonPlanning,
 });
 
-function MonPlanning() {
-  const { member } = useCurrentRole();
-  const programs = useQuery(programsQuery);
-  const poles = useQuery(polesQuery);
+type ViewMode = "calendar" | "list";
+type PersonalEntry = { id:string; kind:"program"|"availability"|"training"; title:string; date:string; endDate:string; startTime:string|null; endTime:string|null; detail:string; programId?:string };
+const DAY_LABELS=["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+const KIND_LABEL={program:"Programme",availability:"Indisponibilité",training:"Formation"} as const;
+function isoDate(d:Date){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function startOfWeek(d:Date){const n=new Date(d);n.setDate(n.getDate()-((n.getDay()+6)%7));n.setHours(12,0,0,0);return n}
+function addDays(d:Date,n:number){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function monthGrid(anchor:Date){const first=new Date(anchor.getFullYear(),anchor.getMonth(),1,12);const start=startOfWeek(first);return Array.from({length:42},(_,i)=>addDays(start,i))}
+function datePart(v:string){return v.slice(0,10)}
+function timePart(v:string){return v.includes("T")?v.slice(11,16):""}
 
-  const memberId = member?.id ?? null;
-  const today = new Date().toISOString().slice(0, 10);
-  const mine = memberId
-    ? (programs.data ?? []).filter((p) => p.assignments.some((a) => a.memberIds.includes(memberId)))
-    : [];
-  const upcoming = mine.filter((p) => (p.start_date ?? "9999") >= today);
-  const past = mine.filter((p) => (p.start_date ?? "9999") < today);
-  const toConfirm = upcoming.filter(
-    (p) => !p.responses.some((r) => r.member_id === memberId && r.status !== "pending"),
-  );
-
-  const poleName = (id: string) => poles.data?.find((p) => p.id === id)?.name ?? "Pôle";
-
-  const kpis = [
-    { label: "Services à venir", value: upcoming.length },
-    { label: "À confirmer", value: toConfirm.length },
-    { label: "Services passés", value: past.length },
-    { label: "Total de mes services", value: mine.length },
-  ];
-
-  return (
-    <AppShell title="Mon planning" subtitle="Vos services, confirmations, remplacements et rappels.">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((k) => (
-          <div key={k.label} className="rounded-2xl border border-border bg-card p-4">
-            <b className="block text-2xl text-icc-violet">{k.value}</b>
-            <small className="text-muted-foreground">{k.label}</small>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-4 rounded-2xl border border-border bg-card p-4">
-        {mine.length === 0 ? (
-          <EmptyState
-            title="Aucun service enregistré"
-            description="Vos affectations apparaîtront ici dès qu'un programme vous mobilisera."
-          />
-        ) : (
-          <div className="space-y-2">
-            {[...upcoming, ...past].map((p) => {
-              const response = p.responses.find((r) => r.member_id === memberId);
-              const myPoles = p.assignments
-                .filter((a) => memberId && a.memberIds.includes(memberId))
-                .map((a) => poleName(a.pole_id));
-              return (
-                <div key={p.id} className="rounded-xl border border-border p-3">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <p className="font-bold">{p.title}</p>
-                    <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-foreground">
-                      {response ? RESPONSE_LABEL[response.status] : "À confirmer"}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formatDate(p.start_date)} · {STATUS_LABEL[p.status] ?? p.status}
-                    {myPoles.length ? ` · ${myPoles.join(", ")}` : ""}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </AppShell>
-  );
+function MonPlanning(){
+  const {member}=useCurrentRole(); const programs=useQuery(programsQuery); const poles=useQuery(polesQuery); const availability=useQuery(availabilityQuery);
+  const [view,setView]=useState<ViewMode>("calendar"); const [anchor,setAnchor]=useState(()=>new Date()); const memberId=member?.id??null;
+  const trainingPaths=useQuery({queryKey:["my-planning-training-paths",memberId],enabled:!!memberId,queryFn:async()=>{const{data,error}=await (supabase as any).from("member_training_paths").select("id,path_id,status,started_at,completed_at").eq("member_id",memberId);if(error)throw error;return data??[]}});
+  const paths=useQuery({queryKey:["my-planning-path-defs"],queryFn:async()=>{const{data,error}=await (supabase as any).from("training_paths").select("id,name,path_kind,pole_id");if(error)throw error;return data??[]}});
+  const poleName=(id:string)=>poles.data?.find(p=>p.id===id)?.name??"Pôle";
+  const mine=memberId?(programs.data??[]).filter(p=>!p.archived&&p.status!=="cancelled"&&p.assignments.some(a=>a.memberIds.includes(memberId))):[];
+  const entries=useMemo<PersonalEntry[]>(()=>{
+    const rows:PersonalEntry[]=[];
+    for(const p of mine){if(!p.start_date)continue;const response=p.responses.find(r=>r.member_id===memberId);const myPoles=p.assignments.filter(a=>memberId&&a.memberIds.includes(memberId)).map(a=>poleName(a.pole_id));rows.push({id:`p-${p.id}`,kind:"program",title:p.title,date:p.start_date,endDate:p.end_date??p.start_date,startTime:p.start_time?.slice(0,5)??null,endTime:p.end_time?.slice(0,5)??null,detail:`${response?RESPONSE_LABEL[response.status]:"À confirmer"}${myPoles.length?` · ${myPoles.join(", ")}`:""}`,programId:p.id})}
+    for(const a of availability.data??[]){if(a.member_id!==memberId||a.status!=="validated")continue;const start=datePart(a.validated_starts_at??a.starts_at),end=datePart(a.validated_ends_at??a.ends_at);rows.push({id:`a-${a.id}`,kind:"availability",title:"Indisponibilité",date:start,endDate:end,startTime:timePart(a.validated_starts_at??a.starts_at)||null,endTime:timePart(a.validated_ends_at??a.ends_at)||null,detail:a.note??"Indisponibilité validée"})}
+    const defs=new Map((paths.data??[]).map((p:any)=>[p.id,p]));for(const mp of trainingPaths.data??[]){if(mp.status==="completed"||!mp.started_at)continue;const p:any=defs.get(mp.path_id);rows.push({id:`t-${mp.id}`,kind:"training",title:p?.name??"Formation",date:datePart(mp.started_at),endDate:datePart(mp.started_at),startTime:null,endTime:null,detail:`${p?.path_kind==="internal"?"Formation interne":"Intégration"}${p?.pole_id?` · ${poleName(p.pole_id)}`:""}`})}
+    return rows.sort((a,b)=>`${a.date}${a.startTime??""}`.localeCompare(`${b.date}${b.startTime??""}`));
+  },[mine,availability.data,trainingPaths.data,paths.data,memberId,poles.data]);
+  const today=isoDate(new Date()),upcoming=entries.filter(e=>e.date>=today),programUpcoming=upcoming.filter(e=>e.kind==="program"),toConfirm=mine.filter(p=>(p.start_date??"9999")>=today&&!p.responses.some(r=>r.member_id===memberId&&r.status!=="pending"));
+  const visibleDates=monthGrid(anchor),title=anchor.toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
+  function move(n:number){setAnchor(d=>{const x=new Date(d);x.setMonth(x.getMonth()+n);return x})}
+  function exportList(){downloadCsv(`mon-planning-liste-${exportStamp()}.csv`,toCsv(entries,[{key:"type",label:"Type",value:e=>KIND_LABEL[e.kind]},{key:"date",label:"Date",value:e=>e.date},{key:"fin",label:"Date fin",value:e=>e.endDate},{key:"horaire",label:"Horaire",value:e=>[e.startTime,e.endTime].filter(Boolean).join(" - ")},{key:"titre",label:"Événement",value:e=>e.title},{key:"detail",label:"Détail",value:e=>e.detail}]))}
+  function exportCalendar(){const esc=(s:string)=>s.replace(/\\/g,"\\\\").replace(/,/g,"\\,").replace(/;/g,"\\;").replace(/\n/g,"\\n");const dt=(d:string,t:string|null)=>d.replaceAll("-","")+(t?`T${t.replace(":","")}00`:"");const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//COM ICC Le Mans//Mon planning//FR","CALSCALE:GREGORIAN",...entries.flatMap(e=>["BEGIN:VEVENT",`UID:${e.id}@com-icc-le-mans`,`DTSTART:${dt(e.date,e.startTime)}`,`DTEND:${dt(e.endDate,e.endTime)}`,`SUMMARY:${esc(e.title)}`,`DESCRIPTION:${esc(`${KIND_LABEL[e.kind]} · ${e.detail}`)}`,"END:VEVENT"]),"END:VCALENDAR"].join("\r\n");const blob=new Blob([ics],{type:"text/calendar;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`mon-planning-calendrier-${exportStamp()}.ics`;a.click();URL.revokeObjectURL(url)}
+  const loading=programs.isLoading||availability.isLoading||trainingPaths.isLoading||paths.isLoading;
+  return <AppShell title="Mon planning" subtitle="Uniquement mes services, mes indisponibilités et mes formations planifiées.">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[{l:"Services à venir",v:programUpcoming.length},{l:"À confirmer",v:toConfirm.length},{l:"Indisponibilités à venir",v:upcoming.filter(e=>e.kind==="availability").length},{l:"Formations en cours",v:(trainingPaths.data??[]).filter((x:any)=>x.status!=="completed").length}].map(k=><Card key={k.l}><CardContent className="p-4"><b className="block text-2xl text-icc-violet">{k.v}</b><small className="text-muted-foreground">{k.l}</small></CardContent></Card>)}</div>
+    <Card className="mt-4"><CardContent className="space-y-4 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex gap-2"><Button size="sm" variant={view==="calendar"?"default":"outline"} onClick={()=>setView("calendar")}><CalendarDays className="size-4"/>Calendrier</Button><Button size="sm" variant={view==="list"?"default":"outline"} onClick={()=>setView("list")}><List className="size-4"/>Liste</Button></div><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={exportCalendar}><Download className="size-4"/>Calendrier (.ics)</Button><Button size="sm" variant="outline" onClick={exportList}><Download className="size-4"/>Liste Excel / CSV</Button><Button size="sm" variant="outline" onClick={()=>window.print()}><Printer className="size-4"/>Imprimer / PDF</Button></div></div></CardContent></Card>
+    {loading?<p className="mt-4 text-sm text-muted-foreground">Chargement…</p>:entries.length===0?<div className="mt-4"><EmptyState title="Aucun élément dans mon planning" description="Vos affectations, indisponibilités validées et formations apparaîtront ici."/></div>:view==="calendar"?<div className="mt-4 rounded-2xl border bg-card p-3 sm:p-4"><div className="mb-4 flex items-center justify-between"><Button size="sm" variant="outline" onClick={()=>move(-1)}>←</Button><h2 className="font-black capitalize text-icc-violet">{title}</h2><Button size="sm" variant="outline" onClick={()=>move(1)}>→</Button></div><div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border bg-border">{DAY_LABELS.map(d=><div key={d} className="bg-muted py-2 text-center text-xs font-black">{d}</div>)}{visibleDates.map(d=>{const ds=isoDate(d),day=entries.filter(e=>e.date<=ds&&e.endDate>=ds),muted=d.getMonth()!==anchor.getMonth();return <div key={ds} className={`min-h-28 bg-card p-1.5 sm:min-h-36 ${muted?"opacity-45":""}`}><span className={`inline-flex size-6 items-center justify-center rounded-full text-xs font-bold ${ds===today?"bg-icc-violet text-white":""}`}>{d.getDate()}</span><div className="mt-1 space-y-1">{day.slice(0,4).map(e=>e.programId?<Link key={e.id} to="/programme/$id" params={{id:e.programId}} className="block rounded border bg-muted/50 p-1 text-[10px] hover:border-icc-violet"><b>{e.startTime?`${e.startTime} · `:""}{e.title}</b><span className="block text-muted-foreground">{KIND_LABEL[e.kind]}</span></Link>:<div key={e.id} className="rounded border bg-muted/50 p-1 text-[10px]"><b>{e.title}</b><span className="block text-muted-foreground">{KIND_LABEL[e.kind]}</span></div>)}{day.length>4?<span className="text-[10px] text-muted-foreground">+ {day.length-4} autre(s)</span>:null}</div></div>})}</div></div>:<div className="mt-4 space-y-2">{entries.map(e=><Card key={e.id}><CardContent className="flex flex-wrap items-center justify-between gap-3 p-4"><div><span className="text-xs font-bold text-icc-violet">{KIND_LABEL[e.kind]}</span><p className="font-bold">{e.title}</p><p className="text-xs text-muted-foreground">{formatDate(e.date)}{e.startTime?` · ${e.startTime}${e.endTime?`–${e.endTime}`:""}`:""} · {e.detail}</p></div>{e.programId?<Button size="sm" variant="outline" asChild><Link to="/programme/$id" params={{id:e.programId}}>Ouvrir</Link></Button>:null}</CardContent></Card>)}</div>}
+  </AppShell>
 }
