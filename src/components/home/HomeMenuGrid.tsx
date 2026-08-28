@@ -13,6 +13,7 @@ const ITEMS:Item[]=[
  {key:"formations",icon:"🎓",title:"Formations",desc:"Parcours par pôle, progression et validations.",to:"/formations"},
  {key:"sollicitations",icon:"🤝",title:"Sollicitations ponctuelles",desc:"Renfort, ajout ou remplacement ponctuel.",to:"/sollicitations"},
  {key:"poles",icon:"🗂️",title:"Pôles",desc:"Référents et organisation des pôles.",to:"/poles"},
+ {key:"materiel_com",icon:"📦",title:"Matériel COM",desc:"Inventaire, état du parc, besoins, devis, acquisitions et suivi.",to:"/materiel-com"},
  {key:"pilotage",icon:"📊",title:"Pilotage",desc:"Suivi, priorités et indicateurs.",to:"/pilotage",staffOnly:true},
  {key:"disponibilites",icon:"🕒",title:"Disponibilités",desc:"Indisponibilités, affectations, réponses et conflits.",to:"/disponibilites"},
  {key:"taches",icon:"📋",title:"Tâches",desc:"Étapes, priorités et préparation des programmes.",to:"/taches"},
