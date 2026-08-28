@@ -301,6 +301,36 @@ function PostService() {
     });
   }
 
+  function autoSynthesis(programId: string) {
+    const items = contributionByProgram(programId);
+    const clean = (values: Array<string | null | undefined>) => {
+      const seen = new Set<string>();
+      return values.map((v) => (v ?? "").trim()).filter((v) => {
+        if (!v) return false;
+        const key = v.toLocaleLowerCase("fr").replace(/[^a-zà-ÿ0-9]+/gi, " ").trim();
+        if (!key || seen.has(key)) return false;
+        seen.add(key); return true;
+      });
+    };
+    const render = (values: Array<string | null | undefined>) => clean(values).map((v) => `• ${v}`).join("\n");
+    const ratings = items.map((c) => Number(c.rating)).filter((n) => n > 0);
+    const avg = ratings.length ? Math.round((ratings.reduce((a,b)=>a+b,0) / ratings.length) * 10) / 10 : 0;
+    const actions = clean(items.map((c) => c.proposed_action));
+    const incidents = clean(items.map((c) => c.incident_note)).map((detail) => ({ ...blankIncident("Autre"), detail }));
+    const polesCount = new Set(items.map((c) => c.pole_id).filter(Boolean)).size;
+    return {
+      summary: items.length ? `${items.length} retour(s) terrain consolidé(s)${polesCount ? ` · ${polesCount} pôle(s)` : ""}${actions.length ? ` · ${actions.length} action(s) proposée(s)` : ""}` : "",
+      went_well: render(items.map((c) => c.went_well)),
+      difficulties: render(items.map((c) => c.difficulties)),
+      to_improve: render(items.map((c) => c.to_improve)),
+      needs: render(items.map((c) => c.needs)),
+      rating: avg ? Math.max(1, Math.min(5, Math.round(avg))) : 0,
+      to_direction: items.some((c) => c.to_direction),
+      incidents,
+      actions,
+    };
+  }
+
   function openGlobal(programId: string, debrief: ProgramDebrief | undefined) {
     const program = past.find((p) => p.id === programId);
     const assigned = Array.from(new Set((program?.assignments ?? []).flatMap((a: any) => a.memberIds ?? []))) as string[];
@@ -310,21 +340,22 @@ function PostService() {
       return { member_id: id, presence: row?.presence ?? "present", note: row?.note ?? "" };
     });
     for (const row of rows) if (!presences.some((p) => p.member_id === row.member_id)) presences.push({ member_id: row.member_id, presence: row.presence, note: row.note ?? "" });
+    const auto = autoSynthesis(programId);
     setGlobalDraft({
       id: debrief?.id ?? null,
       program_id: programId,
-      summary: debrief?.summary ?? "",
-      went_well: debrief?.went_well ?? "",
-      to_improve: debrief?.to_improve ?? "",
+      summary: debrief?.summary ?? auto.summary,
+      went_well: debrief?.went_well ?? auto.went_well,
+      to_improve: debrief?.to_improve ?? auto.to_improve,
       attendance_note: debrief?.attendance_note ?? "",
-      rating: debrief?.rating ?? 0,
+      rating: debrief?.rating ?? auto.rating,
       actual_start: debrief?.actual_start ?? "",
       actual_end: debrief?.actual_end ?? "",
       completion: debrief?.completion ?? "total",
-      difficulties: debrief?.difficulties ?? "",
-      needs: debrief?.needs ?? "",
-      to_direction: debrief?.to_direction ?? false,
-      incidents: decodeIncidents(debrief?.incident_type, debrief?.incident_detail),
+      difficulties: debrief?.difficulties ?? auto.difficulties,
+      needs: debrief?.needs ?? auto.needs,
+      to_direction: debrief?.to_direction ?? auto.to_direction,
+      incidents: debrief ? decodeIncidents(debrief.incident_type, debrief.incident_detail) : auto.incidents,
       presences,
       status: (debrief as any)?.status ?? "draft",
     });
