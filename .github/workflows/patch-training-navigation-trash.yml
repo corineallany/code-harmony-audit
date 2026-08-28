@@ -1,0 +1,61 @@
+name: Patch training navigation and trash
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-training-navigation-trash.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch training UI
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('src/routes/_authenticated/formations.tsx')
+          s=p.read_text()
+          s=s.replace('Archive, CheckCircle2, ClipboardList, Pencil, Plus, Printer, UserPlus', 'Archive, CheckCircle2, ClipboardList, Pencil, Plus, Printer, Trash2, UserPlus')
+          s=s.replace('global_objectives:string|null};', 'global_objectives:string|null;deleted_at:string|null;deleted_by:string|null;deletion_reason:string|null};')
+          s=s.replace('.from("member_training_paths").select("*").order("started_at",{ascending:false})', '.from("member_training_paths").select("*").is("deleted_at",null).order("started_at",{ascending:false})')
+          marker='const[detail,setDetail]=useState<MemberPath|null>(null),'
+          s=s.replace(marker, 'const[deleteTarget,setDeleteTarget]=useState<MemberPath|null>(null),[deleteReason,setDeleteReason]=useState("");\\n const trashAssignment=useMutation({mutationFn:async()=>{if(!deleteTarget)throw new Error("Parcours introuvable.");if(!deleteReason.trim())throw new Error("Le motif de suppression est obligatoire.");const{error}=await db().from("member_training_paths").update({deleted_at:new Date().toISOString(),deleted_by:member?.id??null,deletion_reason:deleteReason.trim(),updated_at:new Date().toISOString()}).eq("id",deleteTarget.id);if(error)throw error;await logAction({action:"formation_attribution_corbeille",entity:"member_training_path",entityId:deleteTarget.id,detail:`${memberName.get(deleteTarget.member_id)??"Membre"} · ${pathById.get(deleteTarget.path_id)?.name??"Formation"} · Motif : ${deleteReason.trim()}`,actorName:member?.full_name})},onSuccess:async()=>{setDeleteTarget(null);setDeleteReason("");setDetail(null);toast.success("Parcours placé dans la corbeille");await refresh()},onError:(e:any)=>toast.error(e.message)});\\n '+marker)
+          s=s.replace('return <AppShell title="Formations" subtitle=', 'const[tab,setTab]=useState("mine");\\n return <AppShell title="Formations" subtitle=')
+          s=s.replace('<div className="mb-5 grid gap-3 sm:grid-cols-3"><Summary n={integrationCount} label="Intégrations en cours"/><Summary n={internalCount} label="Formations internes en cours"/><Summary n={pending} label="Étapes restant à acquérir"/></div>', '<div className="mb-5 grid gap-3 sm:grid-cols-3"><Summary n={integrationCount} label="Intégrations en cours" onClick={()=>setTab(isStaff?"tracking":"mine")}/><Summary n={internalCount} label="Formations internes en cours" onClick={()=>setTab(isStaff?"tracking":"mine")}/><Summary n={pending} label="Étapes restant à acquérir" onClick={()=>setTab(isStaff?"validate":"mine")}/></div>')
+          s=s.replace('<Tabs defaultValue="mine">', '<Tabs value={tab} onValueChange={setTab}>')
+          s=s.replace('onPrint={()=>printJourney(mp)}/>)}</TabsContent>', 'onPrint={()=>printJourney(mp)} onDelete={isStaff?()=>{setDeleteTarget(mp);setDeleteReason("")}:undefined}/>)}</TabsContent>')
+          insert='''\\n  <Dialog open={!!deleteTarget} onOpenChange={o=>{if(!o){setDeleteTarget(null);setDeleteReason("")}}}><DialogContent><DialogHeader><DialogTitle>Mettre ce parcours dans la corbeille ?</DialogTitle></DialogHeader><div className="space-y-3"><p className="text-sm text-muted-foreground">Cette action retire l’attribution de la formation sans détruire son historique. Elle pourra être restaurée depuis Archives & corbeille.</p><Field label="Motif obligatoire"><Textarea value={deleteReason} onChange={e=>setDeleteReason(e.target.value)} placeholder="Ex. attribution faite par erreur, mauvais parcours..."/></Field></div><DialogFooter><Button variant="ghost" onClick={()=>setDeleteTarget(null)}>Annuler</Button><Button variant="destructive" disabled={!deleteReason.trim()||trashAssignment.isPending} onClick={()=>trashAssignment.mutate()}><Trash2 className="size-4"/>Mettre à la corbeille</Button></DialogFooter></DialogContent></Dialog>\\n'''
+          s=s.replace('  <Dialog open={pathOpen}', insert+'  <Dialog open={pathOpen}')
+          s=s.replace('function Summary({n,label}:{n:number;label:string}){return <Card><CardContent className="p-4"><p className="text-2xl font-bold text-icc-violet">{n}</p><p className="text-xs font-semibold">{label}</p></CardContent></Card>}', 'function Summary({n,label,onClick}:{n:number;label:string;onClick:()=>void}){return <button type="button" onClick={onClick} className="block w-full rounded-xl text-left transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-icc-violet"><Card className="h-full cursor-pointer hover:border-icc-violet/40 hover:shadow-md"><CardContent className="p-4"><p className="text-2xl font-bold text-icc-violet">{n}</p><p className="text-xs font-semibold">{label}</p><p className="mt-1 text-[11px] text-muted-foreground">Cliquer pour consulter</p></CardContent></Card></button>}')
+          old='function JourneyCard({mp,path,rows,progress,memberLabel,onOpen,onPrint}:{mp:MemberPath;path?:TrainingPath;rows:MemberStep[];progress:number;memberLabel?:string;onOpen:()=>void;onPrint:()=>void})'
+          new='function JourneyCard({mp,path,rows,progress,memberLabel,onOpen,onPrint,onDelete}:{mp:MemberPath;path?:TrainingPath;rows:MemberStep[];progress:number;memberLabel?:string;onOpen:()=>void;onPrint:()=>void;onDelete?:()=>void})'
+          s=s.replace(old,new)
+          s=s.replace('<Button size="sm" variant="outline" onClick={onPrint}><Printer className="size-4"/>Imprimer / PDF</Button></div></CardContent></Card>}', '<Button size="sm" variant="outline" onClick={onPrint}><Printer className="size-4"/>Imprimer / PDF</Button>{onDelete?<Button size="sm" variant="ghost" className="text-destructive" onClick={onDelete}><Trash2 className="size-4"/>Retirer l’attribution</Button>:null}</div></CardContent></Card>}')
+          s=s.replace('\\n','\n')
+          p.write_text(s)
+          p=Path('src/routes/_authenticated/archives.tsx')
+          s=p.read_text()
+          s=s.replace('"team_life_events";', '"team_life_events" | "member_training_paths";')
+          s=s.replace('team_life_events: "Vie d’équipe",', 'team_life_events: "Vie d’équipe", member_training_paths: "Formation attribuée",')
+          s=s.replace('{ value: "members", label: "Membres" },', '{ value: "members", label: "Membres" }, { value: "member_training_paths", label: "Formations attribuées" },')
+          needle='const teamLife = useQuery({ queryKey: ["archives-team-life"]'
+          pos=s.find(needle)
+          if pos!=-1:
+            line_end=s.find('\n',pos)
+            add='  const trainingTrash = useQuery({ queryKey: ["archives-training-assignments"], queryFn: async () => { const { data, error } = await db().from("member_training_paths").select("id,member_id,path_id,deletion_reason,deleted_at").not("deleted_at", "is", null).order("deleted_at", { ascending: false }); if (error) throw new Error(error.message); return data ?? []; } });\\n'
+            s=s[:line_end+1]+add+s[line_end+1:]
+          s=s.replace('...(teamLife.data ?? []).map((e: any) => ({ key:', '...(trainingTrash.data ?? []).map((t: any) => ({ key: `member_training_paths-${t.id}`, id: t.id, table: "member_training_paths" as const, label: `Parcours de formation · ${t.member_id}`, detail: t.deletion_reason ? `Motif : ${t.deletion_reason}` : "Attribution retirée", state: "deleted" as const })),\\n    ...(teamLife.data ?? []).map((e: any) => ({ key:')
+          s=s.replace('models.data, teamLife.data]);', 'models.data, teamLife.data, trainingTrash.data]);')
+          s=s.replace('if (entry.table === "team_life_events") {', 'if (entry.table === "member_training_paths") {\\n      if (destination === "deleted") return;\\n      ({ error } = await db().from("member_training_paths").update({ deleted_at: null, deleted_by: null, deletion_reason: null, updated_at: new Date().toISOString() }).eq("id", entry.id));\\n    } else if (entry.table === "team_life_events") {')
+          s=s.replace('"archives-team-life", "archives-audit"', '"archives-team-life", "archives-training-assignments", "member-training-paths", "archives-audit"')
+          s=s.replace('|| teamLife.isLoading || permissions.isLoading', '|| teamLife.isLoading || trainingTrash.isLoading || permissions.isLoading')
+          s=s.replace('\\n','\n')
+          p.write_text(s)
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/_authenticated/formations.tsx src/routes/_authenticated/archives.tsx
+          git commit -m "fix: navigation formation et corbeille des attributions" || exit 0
+          git push
