@@ -1,0 +1,42 @@
+name: Patch post-service auto synthesis
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/patch-post-service-auto-synthesis.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch automatic synthesis
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/routes/_authenticated/post-service.tsx')
+          s=p.read_text()
+          anchor='  function openGlobal(programId: string, debrief: ProgramDebrief | undefined) {'
+          helper='''  function autoSynthesis(programId: string) {\n    const items = contributionByProgram(programId);\n    const clean = (values: Array<string | null | undefined>) => {\n      const seen = new Set<string>();\n      return values.map((v) => (v ?? "").trim()).filter((v) => {\n        if (!v) return false;\n        const key = v.toLocaleLowerCase("fr").replace(/[^a-zà-ÿ0-9]+/gi, " ").trim();\n        if (!key || seen.has(key)) return false;\n        seen.add(key); return true;\n      });\n    };\n    const render = (values: Array<string | null | undefined>) => clean(values).map((v) => `• ${v}`).join("\\n");\n    const ratings = items.map((c) => Number(c.rating)).filter((n) => n > 0);\n    const avg = ratings.length ? Math.round((ratings.reduce((a,b)=>a+b,0) / ratings.length) * 10) / 10 : 0;\n    const actions = clean(items.map((c) => c.proposed_action));\n    const incidents = clean(items.map((c) => c.incident_note)).map((detail) => ({ ...blankIncident("Autre"), detail }));\n    const polesCount = new Set(items.map((c) => c.pole_id).filter(Boolean)).size;\n    return {\n      summary: items.length ? `${items.length} retour(s) terrain consolidé(s)${polesCount ? ` · ${polesCount} pôle(s)` : ""}${actions.length ? ` · ${actions.length} action(s) proposée(s)` : ""}` : "",\n      went_well: render(items.map((c) => c.went_well)),\n      difficulties: render(items.map((c) => c.difficulties)),\n      to_improve: render(items.map((c) => c.to_improve)),\n      needs: render(items.map((c) => c.needs)),\n      rating: avg ? Math.max(1, Math.min(5, Math.round(avg))) : 0,\n      to_direction: items.some((c) => c.to_direction),\n      incidents,\n      actions,\n    };\n  }\n\n'''
+          if helper.strip() not in s:
+            if anchor not in s: raise SystemExit('openGlobal anchor missing')
+            s=s.replace(anchor, helper+anchor, 1)
+          old='''    setGlobalDraft({\n      id: debrief?.id ?? null,\n      program_id: programId,\n      summary: debrief?.summary ?? "",\n      went_well: debrief?.went_well ?? "",\n      to_improve: debrief?.to_improve ?? "",\n      attendance_note: debrief?.attendance_note ?? "",\n      rating: debrief?.rating ?? 0,'''
+          new='''    const auto = autoSynthesis(programId);\n    setGlobalDraft({\n      id: debrief?.id ?? null,\n      program_id: programId,\n      summary: debrief?.summary ?? auto.summary,\n      went_well: debrief?.went_well ?? auto.went_well,\n      to_improve: debrief?.to_improve ?? auto.to_improve,\n      attendance_note: debrief?.attendance_note ?? "",\n      rating: debrief?.rating ?? auto.rating,'''
+          if old not in s: raise SystemExit('draft start anchor missing')
+          s=s.replace(old,new,1)
+          old2='''      difficulties: debrief?.difficulties ?? "",\n      needs: debrief?.needs ?? "",\n      to_direction: debrief?.to_direction ?? false,\n      incidents: decodeIncidents(debrief?.incident_type, debrief?.incident_detail),'''
+          new2='''      difficulties: debrief?.difficulties ?? auto.difficulties,\n      needs: debrief?.needs ?? auto.needs,\n      to_direction: debrief?.to_direction ?? auto.to_direction,\n      incidents: debrief ? decodeIncidents(debrief.incident_type, debrief.incident_detail) : auto.incidents,'''
+          if old2 not in s: raise SystemExit('draft fields anchor missing')
+          s=s.replace(old2,new2,1)
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/routes/_authenticated/post-service.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m 'feat: préremplir automatiquement la synthèse post-service'
+          git push
