@@ -15,7 +15,6 @@ export const ROLE_LABEL: Record<AppRole, string> = {
   equipier: "Équipier",
 };
 
-
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -40,7 +39,12 @@ export function useAuth() {
   return { session, user, loading };
 }
 
-/** Rôle applicatif + permissions, source unique = tables user_roles / role_permissions. */
+/**
+ * Rôle applicatif + permissions.
+ * La structure définie dans Paramètres est prioritaire pour la Direction :
+ * le membre choisi comme Responsable/Adjoint doit réellement disposer de ces droits,
+ * même si une ancienne ligne user_roles n'a pas encore été synchronisée.
+ */
 export function useCurrentRole() {
   const { user, loading } = useAuth();
 
@@ -48,15 +52,24 @@ export function useCurrentRole() {
     queryKey: ["current-role", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      const [rolesRes, permsRes, memberRes] = await Promise.all([
+      const [rolesRes, permsRes, memberRes, settingsRes] = await Promise.all([
         supabase.from("user_roles").select("role, active").eq("user_id", user!.id).eq("active", true),
         supabase.from("role_permissions").select("role, permission"),
         supabase.from("members").select("id, full_name, photo_url").eq("auth_user_id", user!.id).maybeSingle(),
+        supabase.from("app_settings").select("supervisor_member_id, adjoint_member_id").eq("id", "main").maybeSingle(),
       ]);
+
+      const roles = (rolesRes.data ?? []).map((r) => r.role as AppRole);
+      const memberId = memberRes.data?.id ?? null;
+      const configuredRole: AppRole | null = memberId && settingsRes.data?.supervisor_member_id === memberId
+        ? "responsable"
+        : memberId && settingsRes.data?.adjoint_member_id === memberId
+          ? "adjoint"
+          : null;
+      if (configuredRole && !roles.includes(configuredRole)) roles.push(configuredRole);
 
       // Rôle hiérarchique affiché ; « admin_technique » est un accès transversal, pas un niveau.
       const order: AppRole[] = ["responsable", "adjoint", "referent", "equipier"];
-      const roles = (rolesRes.data ?? []).map((r) => r.role as AppRole);
       const role = order.find((r) => roles.includes(r)) ?? (roles[0] ?? null);
       const permissions = new Set(
         (permsRes.data ?? []).filter((p) => roles.includes(p.role as AppRole)).map((p) => p.permission),
@@ -84,4 +97,3 @@ export function useCurrentRole() {
       role === "responsable" || isTechAdmin || (query.data?.permissions.has(permission) ?? false),
   };
 }
-
