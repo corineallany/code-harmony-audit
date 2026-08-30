@@ -1,0 +1,32 @@
+name: Fix post service attendance save
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-post-service-attendance-save.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix validation order
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/routes/_authenticated/post-service.tsx')
+          s=p.read_text()
+          old='''      const { error: delError } = await db().from("program_attendance").delete().eq("program_id", value.program_id);\n      if (delError) throw new Error(delError.message);\n      for (const p of value.presences) {\n        if (p.presence === "retard" && !p.arrival_time) throw new Error(`Renseigne l’heure d’arrivée de ${memberName(p.member_id)}.`);\n        if (["retard","absent","partiel"].includes(p.presence) && p.justified === null) throw new Error(`Précise si la situation de ${memberName(p.member_id)} est justifiée.`);\n        if (["retard","absent","partiel"].includes(p.presence) && p.justified === true && !p.justification_reason.trim()) throw new Error(`Renseigne le motif de justification de ${memberName(p.member_id)}.`);\n      }\n      const rows = value.presences.filter((p) => p.presence).map((p) => ({'''
+          new='''      for (const p of value.presences) {\n        if (p.presence === "retard" && !p.arrival_time) throw new Error(`Renseigne l’heure d’arrivée de ${memberName(p.member_id)}.`);\n        if (["retard","absent","partiel"].includes(p.presence) && p.justified === null) throw new Error(`Précise si la situation de ${memberName(p.member_id)} est justifiée.`);\n        if (["retard","absent","partiel"].includes(p.presence) && !p.justification_reason.trim()) throw new Error(`Renseigne le motif / l’explication de ${memberName(p.member_id)}.`);\n      }\n      const { error: delError } = await db().from("program_attendance").delete().eq("program_id", value.program_id);\n      if (delError) throw new Error(delError.message);\n      const rows = value.presences.filter((p) => p.presence).map((p) => ({'''
+          if old not in s: raise SystemExit('target block not found')
+          s=s.replace(old,new,1)
+          s=s.replace('p.justified===true?"Motif de justification *":"Motif / explication"','"Motif / explication *"',1)
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/_authenticated/post-service.tsx
+          git commit -m "fix: valider présences avant réécriture" || exit 0
+          git push
