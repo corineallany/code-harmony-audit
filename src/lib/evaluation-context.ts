@@ -24,6 +24,16 @@ export type EvaluationFacts = {
     absent: number;
     partial: number;
   };
+  attendanceDetails: Array<{
+    programId: string;
+    programTitle: string;
+    date: string | null;
+    presence: string;
+    arrivalTime: string | null;
+    departureTime: string | null;
+    justified: boolean | null;
+    reason: string | null;
+  }>;
   engagement: {
     reinforcements: number;
     replacements: number;
@@ -96,6 +106,23 @@ export async function getEvaluationFacts(memberId: string, periodStart: string, 
   const assignedProgramIds = new Set(assignments.filter((a: any) => memberAssignmentIds.has(a.id)).map((a: any) => a.program_id));
 
   const attendance = (attendanceRes.data ?? []).filter((a: any) => a.member_id === memberId && periodProgramIds.has(a.program_id));
+  const programById = new Map(programs.map((p: any) => [p.id, p]));
+  const attendanceDetails = attendance
+    .filter((a: any) => ["retard", "absent", "partiel"].includes(a.presence))
+    .map((a: any) => {
+      const program:any = programById.get(a.program_id);
+      return {
+        programId: a.program_id,
+        programTitle: program?.title ?? "Programme",
+        date: program?.start_date ?? null,
+        presence: a.presence,
+        arrivalTime: a.arrival_time ?? null,
+        departureTime: a.departure_time ?? null,
+        justified: a.justified ?? null,
+        reason: a.justification_reason ?? a.note ?? null,
+      };
+    })
+    .sort((a: any,b: any)=>(b.date??"").localeCompare(a.date??""));
   const attended = attendance.filter((a: any) => ["present", "retard", "partiel", "renfort"].includes(a.presence));
   const late = attendance.filter((a: any) => a.presence === "retard").length;
   const absent = attendance.filter((a: any) => a.presence === "absent").length;
@@ -201,6 +228,7 @@ export async function getEvaluationFacts(memberId: string, periodStart: string, 
       absent,
       partial,
     },
+    attendanceDetails,
     engagement: { reinforcements, replacements },
     reliability: {
       presenceRate: pct(attended.length, attendance.length),
