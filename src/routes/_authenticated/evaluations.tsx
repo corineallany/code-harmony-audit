@@ -17,7 +17,7 @@ import { useCurrentRole } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { getEvaluationFacts, type EvaluationFacts } from "@/lib/evaluation-context";
 import { asScores, averageScore, EVAL_CRITERIA, EVAL_KIND_LABEL, EVAL_STATUS_LABEL, type EvaluationKind, type EvaluationStatus, type Scores } from "@/lib/evaluations";
-import { evaluationsQuery, formatDateTime, logAction, membersQuery, polesQuery } from "@/lib/icc";
+import { evaluationsQuery, formatDateTime, logAction, membersQuery, polesQuery, settingsQuery } from "@/lib/icc";
 
 export const Route = createFileRoute("/_authenticated/evaluations")({ head: () => ({ meta: [{ title: "Évaluations — COM ICC Le Mans" }, { name: "description", content: "Évaluations humaines par pôle, appuyées par des repères factuels, la formation et des objectifs de progression." }] }), component: Evaluations });
 const db = () => supabase as any;
@@ -37,7 +37,7 @@ function Fact({label,value}:{label:string;value:string}){return <div className="
 function FactsPanel({facts,kind}:{facts:EvaluationFacts;kind:EvaluationKind}){const f=facts,internal=f.training.filter(t=>t.kind==="internal"&&t.status!=="completed");return <div className="space-y-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3"><div><p className="text-xs font-black uppercase tracking-wide text-icc-violet">Repères de la période</p><p className="mt-1 text-xs text-muted-foreground">Informations factuelles uniquement : elles ne calculent et ne modifient aucune note.</p></div><div className="grid gap-2 sm:grid-cols-2"><Fact label="Activité" value={`${f.activity.assigned} programmes affectés · ${f.activity.attended} présences · ${f.activity.late} retard(s) · ${f.activity.absent} absence(s)`}/><Fact label="Engagement" value={`${f.engagement.reinforcements} renfort(s) · ${f.engagement.replacements} remplacement(s) effectué(s)`}/><Fact label="Fiabilité" value={`${f.reliability.presenceRate??"—"}% de présence · réponses : ${f.reliability.responsesAnswered}/${f.reliability.responsesTotal}`}/><Fact label="Post-service" value={`${f.postService.incidentsExplicitlyLinked} incident(s) explicitement associé(s) · ${f.postService.positiveProgramNotes} débrief(s) positif(s) · ${f.postService.improvementProgramNotes} axe(s) d’amélioration`}/></div><div className="grid gap-2 sm:grid-cols-2"><Fact label="Fonction actuelle" value={`${f.currentFunction.poles.length?f.currentFunction.poles.join(" · "):"Aucun pôle"}${f.currentFunction.referentPoles.length?` · Référent : ${f.currentFunction.referentPoles.join(", ")}`:""}`}/><Fact label="Compétence(s) en acquisition" value={internal.length?internal.map(t=>`${t.poleName} — ${t.name} ${t.progress}%`).join(" · "):"Aucune formation interne en cours"}/></div>{f.training.length?<div className="space-y-1 rounded-lg bg-background/70 p-2 text-xs"><b>Formation</b>{f.training.map(t=><p key={`${t.pathId}-${t.startedAt}`}>{t.poleName} — {t.name} : {t.progress}% {t.status==="completed"?"· validée":"· en cours"}</p>)}</div>:null}{kind==="referent"&&f.referent?<div className="rounded-lg bg-background/70 p-2 text-xs"><b>Repères Référent</b><p className="mt-1">{f.referent.programsInPoles} programme(s) · couverture : {f.referent.coverageRate??"—"}% · {f.referent.replacementsManaged} remplacement(s) · {f.referent.peopleInTraining} personne(s) en formation · {f.referent.skillsValidated} compétence(s) validée(s)</p></div>:null}</div>}
 
 function Evaluations(){
- const evaluations=useQuery(evaluationsQuery),members=useQuery(membersQuery),poles=useQuery(polesQuery),queryClient=useQueryClient();
+ const evaluations=useQuery(evaluationsQuery),members=useQuery(membersQuery),poles=useQuery(polesQuery),settings=useQuery(settingsQuery),queryClient=useQueryClient();
  const objectives=useQuery({queryKey:["evaluation-objectives"],queryFn:async()=>{const{data,error}=await db().from("evaluation_objectives").select("*").order("created_at",{ascending:false});if(error)throw Error(error.message);return(data??[])as ObjectiveRow[]}});
  const contributors=useQuery({queryKey:["evaluation-contributors"],queryFn:async()=>{const{data,error}=await db().from("evaluation_contributors").select("*").order("created_at");if(error)throw Error(error.message);return(data??[])as ContributorRow[]}});
  const roleRows=useQuery({queryKey:["evaluation-role-members"],queryFn:async()=>{const{data,error}=await db().from("user_roles").select("user_id,role,active").eq("active",true);if(error)throw Error(error.message);return data??[]}});
@@ -47,7 +47,15 @@ function Evaluations(){
  const myReferentPoleIds=useMemo(()=>allLinks.filter((l:any)=>l.member_id===member?.id&&l.is_referent).map((l:any)=>l.pole_id),[allLinks,member?.id]);
  const scopedSubjectMembers=useMemo(()=>allMembers.filter((m:any)=>m.status==="active"&&m.id!==member?.id&&(isAdmin||allLinks.some((l:any)=>l.member_id===m.id&&myReferentPoleIds.includes(l.pole_id)))),[allMembers,allLinks,myReferentPoleIds,isAdmin,member?.id]);
  const leadershipUserIds=new Set((roleRows.data??[]).filter((r:any)=>["responsable","adjoint"].includes(r.role)).map((r:any)=>r.user_id));
- const leadershipSubjectMembers=allMembers.filter((m:any)=>m.status==="active"&&m.id!==member?.id&&m.auth_user_id&&leadershipUserIds.has(m.auth_user_id));
+ const configuredLeadershipMemberIds=new Set<string>();
+ const appSettings:any=settings.data??{};
+ if(appSettings.supervisor_member_id)configuredLeadershipMemberIds.add(appSettings.supervisor_member_id);
+ if(appSettings.adjoint_member_id)configuredLeadershipMemberIds.add(appSettings.adjoint_member_id);
+ if(appSettings.direction_structure==="responsable_general_grands_groupes"){
+   if(appSettings.group_leads?.communication)configuredLeadershipMemberIds.add(appSettings.group_leads.communication);
+   if(appSettings.group_leads?.audiovisuel)configuredLeadershipMemberIds.add(appSettings.group_leads.audiovisuel);
+ }
+ const leadershipSubjectMembers=allMembers.filter((m:any)=>m.status==="active"&&m.id!==member?.id&&((m.auth_user_id&&leadershipUserIds.has(m.auth_user_id))||configuredLeadershipMemberIds.has(m.id)));
  const candidateMembers=draft?.kind==="leadership"?leadershipSubjectMembers:scopedSubjectMembers;
  const subjectLinks=allLinks.filter((l:any)=>l.member_id===draft?.subject_member_id);const subjectPoleLinks=draft?.kind==="referent"?subjectLinks.filter((l:any)=>l.is_referent):subjectLinks;const eligibleContributors=allLinks.filter((l:any)=>draft?.pole_id&&l.pole_id===draft.pole_id&&l.is_referent&&l.member_id!==member?.id).map((l:any)=>l.member_id).filter((id:string,i:number,a:string[])=>a.indexOf(id)===i);
  const facts=useQuery({queryKey:["evaluation-facts",draft?.subject_member_id,draft?.period_start,draft?.period_end],enabled:!!draft?.subject_member_id&&!!draft?.period_start&&!!draft?.period_end&&isStaff,queryFn:()=>getEvaluationFacts(draft!.subject_member_id,draft!.period_start,draft!.period_end)});
