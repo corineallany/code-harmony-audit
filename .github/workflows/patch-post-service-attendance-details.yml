@@ -1,0 +1,82 @@
+name: Patch post service attendance details
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-post-service-attendance-details.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch post-service attendance details
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('src/routes/_authenticated/post-service.tsx')
+          s=p.read_text()
+          old='''type PresenceDraft = { member_id: string; presence: string; note: string };'''
+          new='''type PresenceDraft = { member_id: string; presence: string; arrival_time: string; departure_time: string; justified: boolean | null; justification_reason: string; note: string };'''
+          if old not in s: raise SystemExit('PresenceDraft type not found')
+          s=s.replace(old,new,1)
+
+          old='''      const rows = value.presences.filter((p) => p.presence).map((p) => ({
+        program_id: value.program_id,
+        member_id: p.member_id,
+        presence: p.presence,
+        is_reinforcement: p.presence === "renfort",
+        note: p.note.trim() || null,
+        recorded_by: userId ?? null,
+      }));'''
+          new='''      for (const p of value.presences) {
+        if (p.presence === "retard" && !p.arrival_time) throw new Error(`Renseigne l’heure d’arrivée de ${memberName(p.member_id)}.`);
+        if (["retard","absent","partiel"].includes(p.presence) && p.justified === null) throw new Error(`Précise si la situation de ${memberName(p.member_id)} est justifiée.`);
+        if (["retard","absent","partiel"].includes(p.presence) && p.justified === true && !p.justification_reason.trim()) throw new Error(`Renseigne le motif de justification de ${memberName(p.member_id)}.`);
+      }
+      const rows = value.presences.filter((p) => p.presence).map((p) => ({
+        program_id: value.program_id,
+        member_id: p.member_id,
+        presence: p.presence,
+        is_reinforcement: p.presence === "renfort",
+        arrival_time: p.arrival_time || null,
+        departure_time: p.departure_time || null,
+        justified: ["retard","absent","partiel"].includes(p.presence) ? p.justified : null,
+        justification_reason: ["retard","absent","partiel"].includes(p.presence) ? (p.justification_reason.trim() || null) : null,
+        note: p.note.trim() || null,
+        recorded_by: userId ?? null,
+      }));'''
+          if old not in s: raise SystemExit('attendance insert block not found')
+          s=s.replace(old,new,1)
+
+          old='''      return { member_id: id, presence: row?.presence ?? "present", note: row?.note ?? "" };'''
+          new='''      const r:any=row;
+      return { member_id: id, presence: r?.presence ?? "present", arrival_time: r?.arrival_time ?? "", departure_time: r?.departure_time ?? "", justified: r?.justified ?? null, justification_reason: r?.justification_reason ?? "", note: r?.note ?? "" };'''
+          if old not in s: raise SystemExit('assigned presence mapping not found')
+          s=s.replace(old,new,1)
+
+          old='''    for (const row of rows) if (!presences.some((p) => p.member_id === row.member_id)) presences.push({ member_id: row.member_id, presence: row.presence, note: row.note ?? "" });'''
+          new='''    for (const row of rows) if (!presences.some((p) => p.member_id === row.member_id)) { const r:any=row; presences.push({ member_id: r.member_id, presence: r.presence, arrival_time: r.arrival_time ?? "", departure_time: r.departure_time ?? "", justified: r.justified ?? null, justification_reason: r.justification_reason ?? "", note: r.note ?? "" }); }'''
+          if old not in s: raise SystemExit('extra presence mapping not found')
+          s=s.replace(old,new,1)
+
+          old='''          <section className="space-y-2"><h3 className="font-bold text-icc-violet">Présence réelle</h3>{globalDraft.presences.map((p,i)=><div key={p.member_id} className="grid gap-2 rounded-lg border p-2 sm:grid-cols-[1fr_180px_1fr]"><div className="text-sm font-semibold">{memberName(p.member_id)}</div><Select value={p.presence} onValueChange={(v)=>setGlobalDraft({...globalDraft,presences:globalDraft.presences.map((x,j)=>j===i?{...x,presence:v}:x)})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{Object.entries(PRESENCE_LABEL).map(([v,l])=><SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select><Input placeholder="Note présence" value={p.note} onChange={(e)=>setGlobalDraft({...globalDraft,presences:globalDraft.presences.map((x,j)=>j===i?{...x,note:e.target.value}:x)})}/></div>)}</section>'''
+          new='''          <section className="space-y-3"><div><h3 className="font-bold text-icc-violet">Présence réelle de l’équipe</h3><p className="text-xs text-muted-foreground">Chaque personne affectée est préremplie « Présent ». Modifie uniquement les exceptions. Les retards, absences et présences partielles restent des faits distincts de leur justification.</p></div>{globalDraft.presences.map((p,i)=>{const exceptional=["retard","absent","partiel"].includes(p.presence);const patch=(changes:Partial<PresenceDraft>)=>setGlobalDraft({...globalDraft,presences:globalDraft.presences.map((x,j)=>j===i?{...x,...changes}:x)});return <div key={p.member_id} className="space-y-3 rounded-xl border p-3"><div className="grid gap-2 sm:grid-cols-[1fr_220px]"><div className="text-sm font-semibold">{memberName(p.member_id)}</div><Select value={p.presence} onValueChange={(v)=>patch({presence:v,justified:["retard","absent","partiel"].includes(v)?p.justified:null,justification_reason:["retard","absent","partiel"].includes(v)?p.justification_reason:"",arrival_time:["retard","partiel"].includes(v)?p.arrival_time:"",departure_time:v==="partiel"?p.departure_time:""})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{Object.entries(PRESENCE_LABEL).map(([v,l])=><SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>{p.presence==="retard"?<div className="grid gap-2 sm:grid-cols-2"><Field label="Heure d’arrivée constatée *"><Input type="time" value={p.arrival_time} onChange={(e)=>patch({arrival_time:e.target.value})}/></Field><div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">L’heure d’arrivée permet de constater le retard sans préjuger de sa justification.</div></div>:null}{p.presence==="partiel"?<div className="grid gap-2 sm:grid-cols-2"><Field label="Heure d’arrivée"><Input type="time" value={p.arrival_time} onChange={(e)=>patch({arrival_time:e.target.value})}/></Field><Field label="Heure de départ"><Input type="time" value={p.departure_time} onChange={(e)=>patch({departure_time:e.target.value})}/></Field></div>:null}{exceptional?<div className="space-y-2"><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Justification *</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant={p.justified===true?"default":"outline"} onClick={()=>patch({justified:true})}>Oui, justifié</Button><Button type="button" size="sm" variant={p.justified===false?"destructive":"outline"} onClick={()=>patch({justified:false})}>Non justifié</Button></div><Field label={p.justified===true?"Motif de justification *":"Motif / explication"}><Textarea placeholder={p.presence==="retard"?"Ex. transport, urgence familiale, incident sur le trajet…":p.presence==="absent"?"Préciser la raison de l’absence…":"Préciser la raison de la présence partielle…"} value={p.justification_reason} onChange={(e)=>patch({justification_reason:e.target.value})}/></Field></div>:null}<Field label="Note complémentaire"><Input placeholder="Observation facultative" value={p.note} onChange={(e)=>patch({note:e.target.value})}/></Field></div>})}</section>'''
+          if old not in s: raise SystemExit('presence UI block not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          p=Path('src/lib/evaluation-context.ts')
+          s=p.read_text()
+          old='''    db().from("program_attendance").select("program_id,member_id,presence,is_reinforcement,replaced_member_id"),'''
+          new='''    db().from("program_attendance").select("program_id,member_id,presence,is_reinforcement,replaced_member_id,arrival_time,departure_time,justified,justification_reason,note"),'''
+          if old not in s: raise SystemExit('evaluation attendance select not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/_authenticated/post-service.tsx src/lib/evaluation-context.ts
+          git commit -m "feat: détailler retards et justifications post-service" || exit 0
+          git push
