@@ -9,8 +9,9 @@ async function callPush(body:Record<string,unknown>){const{data,error}=await sup
 export function usePush(userId:string|undefined){
  const[state,setState]=useState<PushState>("loading"),[subscribed,setSubscribed]=useState(false),[error,setError]=useState<string|null>(null);
  useEffect(()=>{if(!userId)return;if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)){setState("unsupported");return}
-  async function init(){try{await navigator.serviceWorker.register(swUrl());const reg=await navigator.serviceWorker.ready;const perm=Notification.permission;setState(perm==="granted"?"granted":perm==="denied"?"denied":"default");const local=await reg.pushManager.getSubscription();setSubscribed(!!local)}catch(err){setState("default");setError(err instanceof Error?err.message:"Impossible d’initialiser les notifications push.")}}
-  init();
+  let cancelled=false;
+  async function init(){try{await navigator.serviceWorker.register(swUrl());const reg=await navigator.serviceWorker.ready;const perm=Notification.permission;if(cancelled)return;setState(perm==="granted"?"granted":perm==="denied"?"denied":"default");const local=await reg.pushManager.getSubscription();if(perm==="granted"&&local){const remote=await callPush({action:"push-status"});if(!remote.active){await callPush({action:"push-subscribe",subscription:local.toJSON(),userAgent:navigator.userAgent})}if(!cancelled)setSubscribed(true)}else if(!cancelled)setSubscribed(false)}catch(err){if(cancelled)return;setState(Notification.permission==="denied"?"denied":"default");setSubscribed(false);setError(err instanceof Error?err.message:"Impossible d’initialiser les notifications push.")}}
+  init();return()=>{cancelled=true};
  },[userId]);
  const enable=useCallback(async()=>{if(!userId)return;setError(null);setState("loading");try{
   if(!window.matchMedia("(display-mode: standalone)").matches&&/iPhone|iPad|iPod/i.test(navigator.userAgent)){setState("default");setError("Sur iPhone, ouvrez COM ICC depuis l’icône installée sur l’écran d’accueil, puis réessayez.");return}
@@ -19,6 +20,7 @@ export function usePush(userId:string|undefined){
   let sub=await registration.pushManager.getSubscription();
   if(!sub){const key=await callPush({action:"public-key"});if(!key.publicKey)throw new Error("La clé Push publique n’est pas configurée.");sub=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(key.publicKey)})}
   await callPush({action:"push-subscribe",subscription:sub.toJSON(),userAgent:navigator.userAgent});
+  const status=await callPush({action:"push-status"});if(!status.active)throw new Error("L’abonnement Push n’a pas été confirmé par le serveur.");
   setSubscribed(true);
  }catch(err){setState(Notification.permission==="denied"?"denied":"default");setError(err instanceof Error?err.message:"Erreur lors de l’activation des notifications.")}},[userId]);
  const disable=useCallback(async()=>{if(!userId)return;setError(null);try{const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(sub){await callPush({action:"push-disable",endpoint:sub.endpoint});await sub.unsubscribe()}setSubscribed(false)}catch(err){setError(err instanceof Error?err.message:"Erreur lors de la désactivation")}},[userId]);
