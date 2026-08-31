@@ -1,0 +1,39 @@
+name: Patch material categories and movements
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-material-categories-movements.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Patch material module
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/routes/_authenticated/materiel-com.tsx')
+          s=p.read_text()
+          s=s.replace('const STATES:any={excellent:"🟢 Excellent",bon:"🟢 Bon",a_surveiller:"🟠 À surveiller",a_reparer:"🛠 À réparer",hors_service:"🔴 Hors service",perdu:"⚫ Perdu"};', 'const STATES:any={excellent:"🟢 Excellent",bon:"🟢 Bon",a_surveiller:"🟠 À surveiller",a_reparer:"🛠 À réparer",hors_service:"🔴 Hors service",perdu:"⚫ Perdu"};\nconst MATERIAL_CATEGORIES:any={video:"Caméras & vidéo",photo:"Photo",optiques:"Objectifs & optiques",stabilisation:"Trépieds & stabilisation",audio:"Audio & microphones",sonorisation:"Sonorisation",eclairage:"Éclairage",regie_streaming:"Régie vidéo / streaming",informatique:"Ordinateurs & informatique",ecrans:"Écrans & moniteurs",reseau_connectique:"Réseau & connectique",cables_adaptateurs:"Câbles & adaptateurs",stockage:"Stockage & cartes mémoire",alimentation:"Batteries & alimentation",mobiles:"Téléphones & tablettes",accessoires:"Accessoires & supports",mobilier:"Mobilier / installation",consommables:"Consommables",autre:"Autre"};')
+          s=s.replace('[icat,setIcat]=useState("autre")','[icat,setIcat]=useState("")')
+          s=s.replace('setIcat(x?.category??"autre")','setIcat(x?.category??"")')
+          s=s.replace('if(!iname.trim())throw Error("Nom du matériel obligatoire");const payload=', 'if(!iname.trim())throw Error("Nom du matériel obligatoire");if(!icat)throw Error("Choisis une catégorie de matériel.");const payload=')
+          s=s.replace('<F l="Catégorie"><Input value={icat} onChange={e=>setIcat(e.target.value)} placeholder="Caméra, son, câblage…"/></F>', '<F l="Catégorie *"><select className="h-10 w-full rounded-md border bg-background px-3" value={icat} onChange={e=>setIcat(e.target.value)}><option value="">Sélectionner une catégorie</option>{Object.entries(MATERIAL_CATEGORIES).map(([k,v]:any)=><option key={k} value={k}>{v}</option>)}</select></F>')
+          s=s.replace('{canLoans?<Button variant="outline" onClick={()=>setLoanOpen(true)}><Hand className="size-4"/>Enregistrer une sortie / prêt</Button>:null}', '{canLoans?<Button variant="outline" asChild><Link to="/materiel-mouvements"><Hand className="size-4"/>Prêts, emprunts & locations</Link></Button>:null}')
+          s=s.replace('<CardTitle className="flex items-center gap-2"><PackageCheck className="size-5"/>Sorties / prêts</CardTitle>', '<CardTitle className="flex items-center gap-2"><PackageCheck className="size-5"/>Prêts, emprunts & locations</CardTitle>')
+          s=s.replace('<CardContent className="space-y-2">{(loans.data??[]).map((x:any)=><div key={x.id} className="rounded-xl border p-3"><div className="flex justify-between gap-2"><div><b>{itemName.get(x.item_id)||"Matériel"}</b><p className="text-xs text-muted-foreground">Qté {x.quantity} · {memberName.get(x.borrower_member_id)||"Sortie COM"}</p></div><Badge variant={x.returned_at?"secondary":"outline"}>{x.returned_at?"Rendu":"En sortie"}</Badge></div>{x.due_at&&!x.returned_at?<p className="mt-1 text-xs">Retour prévu : {new Date(x.due_at).toLocaleString("fr-FR")}</p>:null}{canLoans&&!x.returned_at?<Button size="sm" className="mt-2" onClick={()=>returnLoan.mutate(x.id)}>Enregistrer le retour</Button>:null}</div>)}{!(loans.data??[]).length?<EmptyState title="Aucune sortie de matériel"/>:null}</CardContent>', '<CardContent className="space-y-3"><p className="text-sm text-muted-foreground">Suivez les matériels prêtés par la COM, ceux prêtés à la COM et les locations, avec programme, coût, période et date de restitution.</p><div className="rounded-xl bg-muted/50 p-3"><b>{(loans.data??[]).filter((x:any)=>!x.returned_at&&!x.cancelled_at).length}</b><p className="text-xs text-muted-foreground">mouvement(s) actif(s)</p></div><Button asChild variant="outline"><Link to="/materiel-mouvements">Ouvrir le suivi complet</Link></Button></CardContent>')
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/_authenticated/materiel-com.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: catégories et mouvements matériel complets"
+          git push
