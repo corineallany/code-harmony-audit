@@ -1,31 +1,10 @@
-/** Point d'entrée unique des exports : une seule fonction de sérialisation CSV pour toute l'app. */
-
+/** Point d'entrée unique des exports tabulaires de l'application. */
 export type Column<T> = { key: string; label: string; value: (row: T) => unknown };
-
-function cell(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "boolean") return value ? "oui" : "non";
-  const text = String(value).replace(/\r?\n/g, " ").trim();
-  return /[";,]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
-
-export function toCsv<T>(rows: T[], columns: Column<T>[]): string {
-  const head = columns.map((c) => cell(c.label)).join(";");
-  const body = rows.map((row) => columns.map((c) => cell(c.value(row))).join(";"));
-  return [head, ...body].join("\r\n");
-}
-
-export function downloadCsv(filename: string, content: string) {
-  // BOM pour qu'Excel reconnaisse l'UTF-8 et les accents français.
-  const blob = new Blob([`\uFEFF${content}`], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-export function exportStamp(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+function cell(value: unknown): string { if(value==null)return"";if(typeof value==="boolean")return value?"oui":"non";const text=String(value).replace(/\r?\n/g," ").trim();return /[";,]/.test(text)?`"${text.replace(/"/g,'""')}"`:text; }
+export function toCsv<T>(rows:T[],columns:Column<T>[]):string{const head=columns.map(c=>cell(c.label)).join(";");const body=rows.map(row=>columns.map(c=>cell(c.value(row))).join(";"));return[head,...body].join("\r\n")}
+function xml(value:unknown):string{if(value==null)return"";const text=typeof value==="boolean"?(value?"Oui":"Non"):String(value);return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+export function toExcelWorkbook<T>(title:string,rows:T[],columns:Column<T>[]):string{const widths=columns.map(c=>{const values=rows.slice(0,150).map(r=>String(c.value(r)??"").length);return Math.round(Math.min(45,Math.max(12,c.label.length+2,...values))*6.4)});const cols=widths.map(w=>`<Column ss:AutoFitWidth="0" ss:Width="${w}"/>`).join("");const header=columns.map(c=>`<Cell ss:StyleID="Header"><Data ss:Type="String">${xml(c.label)}</Data></Cell>`).join("");const body=rows.map(row=>`<Row>${columns.map(c=>{const value=c.value(row),numeric=typeof value==="number"&&Number.isFinite(value);return`<Cell ss:StyleID="Body"><Data ss:Type="${numeric?"Number":"String"}">${xml(value)}</Data></Cell>`}).join("")}</Row>`).join("");return`<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Top"/><Font ss:FontName="Calibri" ss:Size="11"/></Style><Style ss:ID="Title"><Font ss:Size="16" ss:Bold="1"/><Interior ss:Color="#F3F0FA" ss:Pattern="Solid"/></Style><Style ss:ID="Header"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Alignment ss:Vertical="Center" ss:WrapText="1"/><Interior ss:Color="#4C0B8A" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/></Borders></Style><Style ss:ID="Body"><Alignment ss:Vertical="Top" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D9DEE8"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D9DEE8"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D9DEE8"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D9DEE8"/></Borders></Style></Styles><Worksheet ss:Name="Données"><Table>${cols}<Row ss:Height="28"><Cell ss:StyleID="Title" ss:MergeAcross="${Math.max(0,columns.length-1)}"><Data ss:Type="String">${xml(title)}</Data></Cell></Row><Row ss:Height="24">${header}</Row>${body}</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FreezePanes/><FrozenNoSplit/><SplitHorizontal>2</SplitHorizontal><TopRowBottomPane>2</TopRowBottomPane></WorksheetOptions></Worksheet></Workbook>`}
+function download(filename:string,content:string,type:string){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=filename;link.click();URL.revokeObjectURL(url)}
+export function downloadCsv(filename:string,content:string){download(filename,`\uFEFF${content}`,"text/csv;charset=utf-8;")}
+export function downloadExcel(filename:string,content:string){download(filename,content,"application/vnd.ms-excel;charset=utf-8;")}
+export function exportStamp():string{return new Date().toISOString().slice(0,10)}
