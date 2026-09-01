@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'src/components/programs/CopyProgramLinkButton.tsx'
+      - '.github/workflows/patch-copy-program-link.yml'
 
 permissions:
   contents: write
