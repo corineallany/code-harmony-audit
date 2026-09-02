@@ -1,0 +1,58 @@
+name: Patch home media and training state
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/components/settings/HomeIdentityMedia.tsx'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch settings and member form
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path('src/routes/_authenticated/parametres.tsx')
+          s=p.read_text()
+          imp='import { BirthdayTeamSettings } from "@/components/settings/BirthdayTeamSettings";'
+          newimp=imp+'\nimport { HomeIdentityMedia } from "@/components/settings/HomeIdentityMedia";'
+          if 'HomeIdentityMedia' not in s:
+              s=s.replace(imp,newimp)
+          old='const [homeTitle,setHomeTitle]=useState(""),[brand,setBrand]=useState(""),[subtitle,setSubtitle]=useState(""),[iconUrl,setIconUrl]=useState(""),[coverUrl,setCoverUrl]=useState(""),[verses,setVerses]=useState<Verse[]>(DEFAULT_VERSES);'
+          new='const [homeTitle,setHomeTitle]=useState(""),[brand,setBrand]=useState(""),[subtitle,setSubtitle]=useState(""),[iconUrl,setIconUrl]=useState(""),[coverUrl,setCoverUrl]=useState(""),[coverCrop,setCoverCrop]=useState<any>({x:50,y:50,zoom:1}),[verses,setVerses]=useState<Verse[]>(DEFAULT_VERSES);'
+          s=s.replace(old,new)
+          old='setIconUrl(x.icon_url??"");setCoverUrl(x.cover_url??"");setVerses'
+          new='setIconUrl(x.icon_url??"");setCoverUrl(x.cover_url??"");setCoverCrop({x:50,y:50,zoom:1,...(x.cover_crop??{})});setVerses'
+          s=s.replace(old,new)
+          old='icon_url:iconUrl.trim()||null,cover_url:coverUrl.trim()||null,verses,updated_at:new Date().toISOString()'
+          new='icon_url:iconUrl.trim()||null,cover_url:coverUrl.trim()||null,cover_crop:coverCrop,cover_enabled:!!coverUrl.trim(),verses,updated_at:new Date().toISOString()'
+          s=s.replace(old,new)
+          old='<Field label="Logo / icône (URL)"><Input value={iconUrl} onChange={e=>setIconUrl(e.target.value)}/></Field><Field label="Couverture (URL)"><Input value={coverUrl} onChange={e=>setCoverUrl(e.target.value)}/></Field>'
+          new='<HomeIdentityMedia iconUrl={iconUrl} setIconUrl={setIconUrl} coverUrl={coverUrl} setCoverUrl={setCoverUrl} coverCrop={coverCrop} setCoverCrop={setCoverCrop}/>'
+          s=s.replace(old,new)
+          p.write_text(s)
+
+          p=Path('src/routes/_authenticated/membre.$id.tsx')
+          s=p.read_text()
+          marker='const isFormation = draft.base_role === "formation";\n      const isReferent = draft.base_role === "referent";'
+          replacement='const isFormation = draft.base_role === "formation";\n      const wasFormation = !!row?.training_start && !row?.training_done;\n      const leavingFormation = !isFormation && wasFormation;\n      const isReferent = draft.base_role === "referent";'
+          s=s.replace(marker,replacement)
+          old='training_start: isFormation ? (draft.training_start || new Date().toISOString().slice(0, 10)) : (draft.training_start || null),\n        training_end_planned: draft.training_end_planned || null,\n        training_end_effective: draft.training_end_effective || null,\n        training_done: isFormation ? false : draft.training_done,'
+          new='training_start: isFormation ? (draft.training_start || new Date().toISOString().slice(0, 10)) : leavingFormation ? null : (draft.training_start || null),\n        training_end_planned: leavingFormation ? null : (draft.training_end_planned || null),\n        training_end_effective: leavingFormation ? null : (draft.training_end_effective || null),\n        training_done: isFormation ? false : leavingFormation ? false : draft.training_done,'
+          s=s.replace(old,new)
+          p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 'src/routes/_authenticated/parametres.tsx' 'src/routes/_authenticated/membre.$id.tsx'
+          git diff --cached --quiet || git commit -m 'fix: restaurer photos accueil et synchroniser statut formation'
+          git push
