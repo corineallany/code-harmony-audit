@@ -165,6 +165,8 @@ function MemberPage() {
 
       const memberId = isNew ? crypto.randomUUID() : id;
       const isFormation = draft.base_role === "formation";
+      const wasFormation = !!row?.training_start && !row?.training_done;
+      const leavingFormation = !isFormation && wasFormation;
       const isReferent = draft.base_role === "referent";
       if (isReferent && !Object.values(draft.poles).some((p) => p.selected && p.referent)) throw Error("Sélectionne au moins un pôle Référent.");
 
@@ -181,10 +183,10 @@ function MemberPage() {
         arrival_year: arrivalYear,
         birthday_day: birthdayDay,
         birthday_month: birthdayMonth,
-        training_start: isFormation ? (draft.training_start || new Date().toISOString().slice(0, 10)) : (draft.training_start || null),
-        training_end_planned: draft.training_end_planned || null,
-        training_end_effective: draft.training_end_effective || null,
-        training_done: isFormation ? false : draft.training_done,
+        training_start: isFormation ? (draft.training_start || new Date().toISOString().slice(0, 10)) : leavingFormation ? null : (draft.training_start || null),
+        training_end_planned: leavingFormation ? null : (draft.training_end_planned || null),
+        training_end_effective: leavingFormation ? null : (draft.training_end_effective || null),
+        training_done: isFormation ? false : leavingFormation ? false : draft.training_done,
         is_icc: draft.is_icc,
         is_ejp: draft.is_ejp,
         inactive_note: draft.inactive_note.trim() || null,
