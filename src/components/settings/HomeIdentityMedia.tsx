@@ -1,3 +1,4 @@
+// Upload des médias d’accueil via le même stockage que les photos membres.
 import { useState } from "react";
 import { ImageCropper, cropStyle, DEFAULT_CROP, type ImageCrop } from "@/components/ImageCropper";
 import { Button } from "@/components/ui/button";
