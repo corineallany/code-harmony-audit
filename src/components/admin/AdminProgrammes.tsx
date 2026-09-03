@@ -379,7 +379,7 @@ export function AdminProgrammes({ openNewOnMount = false }: { openNewOnMount?: b
           label: s.label.trim() || null,
           start_time: s.start_time,
           end_time: s.end_time,
-          required_count: s.required_count,
+          required_count: Math.max(1, Number(s.required_count) || 1),
           position,
         }));
         const slotIns = await db

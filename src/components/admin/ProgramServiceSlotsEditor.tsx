@@ -16,7 +16,7 @@ export type ServiceSlotDraft = {
   label: string;
   start_time: string;
   end_time: string;
-  required_count: number;
+  required_count: number | "";
   pole_id: string;
   memberIds: string[];
 };
@@ -188,9 +188,13 @@ export function ProgramServiceSlotsEditor(props: Props) {
                         value={slot.required_count}
                         onChange={(e) =>
                           update(slot.key, {
-                            required_count: Math.max(1, Number(e.target.value) || 1),
+                            required_count: e.target.value === "" ? "" : Number(e.target.value),
                           })
                         }
+                        onBlur={() => {
+                          if (slot.required_count === "" || slot.required_count < 1)
+                            update(slot.key, { required_count: 1 });
+                        }}
                       />
                     </label>
                   </div>
